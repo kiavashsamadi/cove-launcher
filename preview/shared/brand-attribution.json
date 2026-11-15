@@ -1,0 +1,28 @@
+{
+  "library": "Simple Icons",
+  "version": "11.15.0",
+  "license": "CC0-1.0",
+  "note": "Geometry retained from upstream; presentation fill changed. Brand trademarks remain their owners. Bundled locally; no runtime request.",
+  "icons": [
+    {
+      "name": "appletv",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/11.15.0/icons/appletv.svg",
+      "upstream_sha256": "49b3f33707b7487f43dbaa0bcc364a0a57fc4dd46caa575b580220323b152ea7"
+    },
+    {
+      "name": "playstation",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/11.15.0/icons/playstation.svg",
+      "upstream_sha256": "b68b4d7b63443759b9c4d77a5501c5758eeae06a6d594d278d5eb6cb4d3dbbe4"
+    },
+    {
+      "name": "nintendoswitch",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/11.15.0/icons/nintendoswitch.svg",
+      "upstream_sha256": "3acd3fb0b576ed59bf319047ba487e4866ebeb9275509f6dd47568d4dcdf2586"
+    },
+    {
+      "name": "xbox",
+      "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/11.15.0/icons/xbox.svg",
+      "upstream_sha256": "c5ec61839e921542b3581d9aab7d72b822200975c4b508ea4f9bc02ce4c6f025"
+    }
+  ]
+}

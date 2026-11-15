@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Cove - cinematic launcher preview</title>
+<link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<main id="home" aria-label="Cove launcher design preview">
+ <header class="masthead"><h1>Inputs</h1></header>
+ <section class="hero" aria-label="Selected input" data-kind="tv"><div class="hero-copy"><h2 id="hero-name">Apple TV</h2><span id="hero-current" class="hero-current-marker" hidden><i aria-hidden="true"></i>Current input</span></div><div class="hero-atmosphere" aria-hidden="true"></div><img id="hero-art" class="hero-art" src="shared/brand-appletv.svg" alt=""></section>
+ <section class="inputs-section" aria-label="Connected inputs"><span id="input-count" hidden></span><nav class="sources" aria-label="Connected HDMI inputs"></nav></section>
+ <p class="empty-state" id="empty-state" hidden>Connect an HDMI device to get started.</p>
+ <nav class="utilities" aria-label="Brightness profiles and TV settings">
+ <button id="brightness" class="utility-button brightness-button" type="button" aria-haspopup="dialog" aria-expanded="false">Brightness <span id="brightness-current">50</span></button>
+ <div class="preset-group"><button id="day" class="utility-button" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>Bright</button><button id="night" class="utility-button" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.3A8.5 8.5 0 0 1 9.7 4 8.5 8.5 0 1 0 20 14.3Z"/></svg>Dim</button></div>
+ <button id="settings" class="utility-button settings-button" type="button" aria-label="TV picture and sound settings" title="TV settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.6 3-.5 2.3-2 .9-2-.8L2.8 9l1.7 1.5v2.2L2.8 14l2.3 4 2.2-.7 1.8 1 .5 2.3h4.8l.5-2.3 1.8-1 2.2.7 2.3-4-1.7-1.3v-2.2L21.2 9l-2.3-3.6-2 .8-2-.9-.5-2.3Z"/><circle cx="12" cy="11.8" r="3.2"/></svg></button>
+ </nav>
+ <section id="brightness-panel" class="brightness-panel" role="dialog" aria-modal="true" aria-labelledby="brightness-title" hidden>
+  <div class="brightness-heading"><h2 id="brightness-title">Brightness</h2><output id="brightness-value" for="brightness-range">50</output></div>
+  <div class="brightness-track"><div class="brightness-rail"></div><div id="brightness-fill" class="brightness-fill"></div><input id="brightness-range" type="range" min="0" max="50" step="1" value="50" aria-label="Brightness"></div>
+  <div class="brightness-scope" role="group" aria-label="Apply picture settings"><button id="scope-current" type="button" aria-pressed="true">Current source</button><button id="scope-all" type="button" aria-pressed="false">All sources</button><span id="scope-readonly" class="scope-readonly" hidden></span></div>
+ </section>
+ <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</main>
+<button class="preview-mark" id="open-simulation" type="button" hidden>Preview controls <span>&#8599;</span></button>
+<div id="simulation" class="sheet-wrap" hidden><section class="sheet" role="dialog" aria-modal="true" aria-labelledby="simulation-title"><div class="sheet-heading"><h2 id="simulation-title">Preview controls</h2><button id="close-simulation" class="close-button" type="button" aria-label="Close preview controls">&times;</button></div><p class="simulation-note">These are sample inputs, not a live TV connection. Sleeping devices stay visible. Unplugged devices disappear.</p><div id="simulation-ports"></div><button id="simulate-unknown" type="button">Simulate unavailable connection read</button><p class="simulation-footnote">Open with I &middot; Close with Escape</p></section></div>
+</body></html>

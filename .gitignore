@@ -1,0 +1,22 @@
+# Local references, profiles, secrets and TV data never belong in this repository.
+.local/
+.env
+.env.*
+!.env.example
+**/bin/
+**/obj/
+artifacts/
+*.dll
+*.pdb
+*.db
+*.db-*
+*.sqlite*
+*.tar*
+*.zip
+*.log
+*.pem
+*.key
+*credentials*
+*token-cache*
+__pycache__/
+.DS_Store

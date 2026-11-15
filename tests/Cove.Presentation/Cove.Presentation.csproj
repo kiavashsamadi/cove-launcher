@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><UseAppHost>false</UseAppHost><EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Checks.cs"/><Compile Include="BackChecks.cs"/><Compile Include="../../src/Cove.Native/BackGesture.cs"/><Compile Include="../../src/Cove.Native/ForegroundSession.cs"/><Compile Include="../../src/Cove.Native/ViewerReturn.cs"/>
+    <Compile Include="../../src/Cove.Native/Presentation.cs"/>
+    <Compile Include="../../src/Cove.Native/Controls/ControlAdapter.cs"/>
+    <Compile Include="../../src/Cove.Native/Controls/GuardPolicy.cs"/>
+  <Compile Include="../../src/Cove.Native/Controls/Brightness.cs"/><Compile Include="../../src/Cove.Native/Controls/BrightnessProfiles.cs"/><Compile Include="../../src/Cove.Native/Controls/InputBrightness.cs"/><Compile Include="../../src/Cove.Native/Controls/PictureObservation.cs"/></ItemGroup>
+</Project>

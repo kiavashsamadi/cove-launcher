@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net6.0</TargetFramework><OutputType>Exe</OutputType><UseAppHost>false</UseAppHost><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><StartupObject>LifecycleChecks</StartupObject></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs"/>
+    <Compile Include="../../src/Cove.Native/*.cs" Exclude="../../src/Cove.Native/Bootstrap.cs"/>
+    <Compile Include="../../src/Cove.Native/Controls/*.cs"/>
+    <EmbeddedResource Include="../../src/Cove.Native/assets/*.png"><LogicalName>Cove.art.%(Filename)%(Extension)</LogicalName></EmbeddedResource>
+  </ItemGroup>
+</Project>
