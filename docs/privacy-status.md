@@ -33,8 +33,10 @@ Four native settings were separately tested: the two firmware auto-update
 policies, app auto-updates, and server upgrades of built-in apps. All four were
 set to their typed off values and independently read back. Each write had a
 recorded inverse and a full policy readback; pending-upgrade flags, firmware
-files and updater services were left unchanged. Persistence across a subsequent
-cold boot is still pending.
+files and updater services were left unchanged. A subsequent cold boot was
+confirmed by a new boot identity; fresh reads verified that all four policies
+remained off. The existing component controls and all six picture-setting tables
+also passed their post-restart checks.
 
 These policies reduce automatic changes; they do not block every manual update,
 store/server restoration path or network request. Deferring updates also defers
