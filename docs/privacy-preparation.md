@@ -49,6 +49,16 @@ it can still restore earlier stages with proven completion. This contract and
 its delayed-request tests do not implement native request cancellation or make
 an unqualified TV operation safe.
 
+[`native_app_completion.py`](../scripts/native_app_completion.py) validates the
+matching app-specific start and successful end callbacks from a captured native
+command, together with its natural successful exit. It rejects incomplete,
+mixed-request, timed-out and failed captures. In the inspected implementation,
+the successful end callback follows the registration write. A private adapter
+must still bind the capture to its owned process, exact native tool build and
+reviewed operation; this offline parser cannot authenticate a receipt or qualify
+a new target. Unknown completion remains an unresolved outcome, not permission
+to race an inverse against a late write.
+
 ## Verify operational receipts offline
 
 ```text
