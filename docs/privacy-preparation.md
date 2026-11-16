@@ -36,6 +36,19 @@ four PISA/adagent activation units, marker identity, Home/startup preservation
 and diagnostic cleanup. Missing or contradictory evidence fails. It neither
 contacts the TV nor claims a fresh restart or complete telemetry prevention.
 
+For a separate read-only automatic-update policy receipt:
+
+```sh
+python scripts/verify_update_policy.py --receipt /absolute/local/update-policy-read.json
+```
+
+This requires all four typed policy values to be off, the three inspected
+pending-update values to be zero, known upgrade markers to be absent, and clean
+diagnostic completion. It rejects missing keys, duplicate values, type mismatches
+and incomplete reads. It does not establish receipt freshness, restart
+persistence or protection against every update path. Keep raw receipts private;
+the command prints only its bounded assessment.
+
 `socket_metadata.py` validates two fixed selected-process socket samples and
 decodes full IPv4/IPv6 endpoints from little-endian Linux proc records. It rejects
 truncated addresses, missing protocol coverage, unknown owners, changed process

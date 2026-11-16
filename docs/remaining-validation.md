@@ -33,6 +33,8 @@ diagnostic traces are not distributed.
 - Shared profile persistence across a full restart, accessibility speech,
   full AC removal, future firmware and long-run memory need separate coverage.
 - Complete telemetry prevention and numerical speed improvements are not claimed.
+- The four automatic-update policies passed immediate readback; persistence
+  across a subsequent cold boot remains pending.
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher
 failed. Physical picture, sound and perceived motion require a separate

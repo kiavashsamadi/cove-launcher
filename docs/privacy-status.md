@@ -27,6 +27,22 @@ repository's review tools do not install this configuration. Preserve Settings,
 Device Care, the Cove carrier, display/panel care, HDMI/CEC/eARC, audio, networking,
 Bluetooth, accessibility and security components.
 
+## Automatic-update policies
+
+Four native settings were separately tested: the two firmware auto-update
+policies, app auto-updates, and server upgrades of built-in apps. All four were
+set to their typed off values and independently read back. Each write had a
+recorded inverse and a full policy readback; pending-upgrade flags, firmware
+files and updater services were left unchanged. Persistence across a subsequent
+cold boot is still pending.
+
+These policies reduce automatic changes; they do not block every manual update,
+store/server restoration path or network request. Deferring updates also defers
+security fixes, so retain a deliberate maintenance and requalification route.
+The launcher does not apply this configuration. The
+[offline receipt checker](privacy-preparation.md) verifies only the recorded
+values, not complete update or telemetry prevention.
+
 ## Unresolved paths
 
 Short socket samples and private binary inspection identified shared data/KPI,
