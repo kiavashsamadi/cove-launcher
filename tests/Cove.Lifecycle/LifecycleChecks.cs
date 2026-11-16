@@ -20,6 +20,7 @@ internal sealed partial class NeutralWindow {
  internal void ProbeLeft()=>Window.Default.SendKey("Left",Key.StateType.Down);
  internal void ProbeBack(){Window.Default.SendKey("XF86Back",Key.StateType.Down);Window.Default.SendKey("XF86Back",Key.StateType.Up);Tizen.NUI.Timer.Pump();}
  internal void ProbeRight()=>Window.Default.SendKey("Right",Key.StateType.Down);
+ internal int[] ProbePorts=>Array.ConvertAll(state.Ports,p=>p.Port);internal bool ProbeAudioVisible=>AudioVisible;internal string ProbeAudioConnection=>audioConnection?.Text??"";internal string ProbeAudioName=>audioName?.Text??"";internal string ProbeNotice=>notice?.Text??"";internal bool ProbeInventoryIdle=>sourceMonitor?.Busy==false;internal void ProbeSound()=>OpenTvSettings(true);
  internal void ProbeTick()=>Tick();internal void ProbeSettings()=>OpenTvSettings();
  internal void ProbeRefresh()=>QueueRefresh();internal void ProbeBrightnessOpen()=>OpenBrightness();internal bool ProbePanelOpen=>brightnessEditor.IsOpen;
  internal void ProbeProfile(Appearance profile){focusRow=1;selected=profile==Appearance.Day?0:1;Window.Default.SendKey("Return",Key.StateType.Down);Window.Default.SendKey("Return",Key.StateType.Up);}
@@ -34,20 +35,25 @@ internal sealed partial class NeutralWindow {
 internal sealed class FakeDevice:IDevice {
  public bool CanFollowBrightness(DeviceSnapshot state)=>true;
  internal readonly ManualResetEventSlim ConnectEntered=new(false),ConnectRelease=new(true),InventoryEntered=new(false),InventoryRelease=new(true);
+ internal string? Inventory;internal Action? SourcesChanged;internal int Unsubscribed;
+ public IDisposable WatchSources(Action changed){SourcesChanged=changed;return new SourceSubscription(()=>{SourcesChanged=null;Unsubscribed++;});}sealed class SourceSubscription:IDisposable{readonly Action done;internal SourceSubscription(Action done){this.done=done;}public void Dispose()=>done();}
+ public string ReadAudioReturnChannel()=>"eARC";
  internal int ConnectCalls,Source=13,LastSource,PictureWrites,PictureReads,ConnectCode=1;internal bool ThrowAfterConnect,TransitionAfterConnect,ThrowPicture;
  internal string Mode="655361";internal int Brightness=50;internal bool UpdateSourceOnConnect,ScopeAvailable=true;
  public DeviceSnapshot ReadPicture(){Interlocked.Increment(ref PictureReads);if(ThrowPicture)throw new InvalidOperationException();return new(Source,Mode,Brightness,new HashSet<string>{"655361","393217"},Stopwatch.GetTimestamp()*1000/Stopwatch.Frequency,false,PictureScope.AllSources,true,ScopeAvailable);}
  public (int Source,bool SourceTransition) ReadSourceContext(){if(ThrowAfterConnect&&ConnectCalls>0)throw new InvalidOperationException();return(Source,TransitionAfterConnect&&ConnectCalls>0);}
- public string ReadSources(){InventoryEntered.Set();if(!InventoryRelease.Wait(2000))throw new TimeoutException();return "[{\"sourceType\":13,\"connectionState\":true,\"editName\":\"Apple TV\"},{\"sourceType\":14,\"connectionState\":true,\"editName\":\"Console\"},{\"sourceType\":15,\"connectionState\":false},{\"sourceType\":16,\"connectionState\":false}]";}
+ public string ReadSources(){InventoryEntered.Set();if(!InventoryRelease.Wait(2000))throw new TimeoutException();return Inventory??"[{\"sourceType\":13,\"connectionState\":true,\"editName\":\"Apple TV\"},{\"sourceType\":14,\"connectionState\":true,\"editName\":\"Console\"},{\"sourceType\":15,\"connectionState\":false},{\"sourceType\":16,\"connectionState\":false}]";}
  public int ConnectHdmi(int source){Interlocked.Increment(ref ConnectCalls);LastSource=source;ConnectEntered.Set();if(!ConnectRelease.Wait(2000))throw new TimeoutException();if(UpdateSourceOnConnect){Source=source;Mode="458769";Brightness=50;}return ConnectCode;}
  public bool SetBrightness(int value){PictureWrites++;Brightness=value;return true;}public bool SetPictureScope(PictureScope scope){PictureWrites++;return false;}public bool HasBrightnessRange()=>true;
 }
-internal static class LifecycleChecks {
+internal static partial class LifecycleChecks {
  static int checks;
  static void Check(bool ok,string why){checks++;if(!ok)throw new Exception(why);}
  static void Until(Func<bool> predicate,int timeout=3000){var time=Stopwatch.StartNew();while(!predicate()){Tizen.NUI.Timer.Pump();Thread.Sleep(1);if(time.ElapsedMilliseconds>timeout)throw new TimeoutException("UI condition did not settle");}}
- static NeutralWindow Create(FakeDevice device){Window.Reset();var app=new NeutralWindow(device,new BrightnessProfiles());app.ProbeCreate();Until(()=>app.ProbeReady);app.ProbeTick();return app;}
+ static NeutralWindow Create(FakeDevice device){Window.Reset();var app=new NeutralWindow(device,new BrightnessProfiles());app.ProbeCreate();Until(()=>app.ProbeReady&&app.ProbeInventoryIdle);app.ProbeTick();return app;}
  static void Main(){
+  RunHotplugChecks();
+  RunLifetimeChecks();
   foreach(bool reopenWithHome in new[]{false,true}){
    var followDevice=new FakeDevice{UpdateSourceOnConnect=true};using var followApp=Create(followDevice);
    followApp.ProbeProfile(Appearance.Night);Until(()=>followApp.ProbeSettled);int writes=followDevice.PictureWrites;

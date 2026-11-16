@@ -6,6 +6,8 @@ ROOT=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser()
 parser.add_argument('--dotnet',default='dotnet')
 parser.add_argument('--framework-dir',type=Path)
+parser.add_argument('--browser',action='store_true',help='Also run the offline Playwright interaction regressions')
+parser.add_argument('--node',default='node')
 args=parser.parse_args()
 env=os.environ.copy();env.update(DOTNET_CLI_TELEMETRY_OPTOUT='1',DOTNET_SKIP_FIRST_TIME_EXPERIENCE='1',DOTNET_EnableDiagnostics='0')
 runs=[]
@@ -32,6 +34,9 @@ def audit_export():
   if path.suffix.lower() in ('.dll','.db','.sqlite3','.zip','.pdb','.key','.pem'):raise RuntimeError('Private/binary export: '+name)
   if path.suffix.lower() in ('.png','.jpg'):continue
   data=path.read_bytes()
+  if path.suffix.lower() in ('.cs','.csproj','.py','.js','.cjs','.css','.html','.md','.json','.yml','.yaml','.svg'):
+   decoded=data.decode('utf-8')
+   if '\ufffd' in decoded:raise RuntimeError('Replacement character in public text: '+name)
   for label,pattern in rules.items():
    if re.search(pattern,data):raise RuntimeError(label+' found in '+name+'; no contents printed')
  return dict(files=len(paths),checked=True,scope='Publishable Git paths only; pattern scan plus explicit source-only export review')
@@ -42,6 +47,7 @@ try:
  # The baseline control policy and native interop are shared; these checks do not call it.
  for project in ['Cove.Controls','Cove.Bootstrap','Cove.Presentation','Cove.Lifecycle']:
   run([args.dotnet,'run','--project',f'tests/{project}/{project}.csproj','-c','Release','-p:UseSharedCompilation=false'])
+ if args.browser:run([args.node,'scripts/check-preview.cjs'])
  native=None
  if args.framework_dir:
   run([args.dotnet,'build','src/Cove.Native/Cove.Native.csproj','-c','Release','--nologo','-v','quiet','-p:UseSharedCompilation=false','-p:TV_FRAMEWORK_DIR='+str(args.framework_dir.resolve())])

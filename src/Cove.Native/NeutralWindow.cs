@@ -38,7 +38,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
  protected override void OnCreate(){
   base.OnCreate();Window.Default.Title="Cove";Window.Default.BackgroundColor=Ink();Window.Default.InterceptKeyEvent+=OnIntercept;Window.Default.SetAcceptFocus(true);
   var profiles=suppliedProfiles??new BrightnessProfiles(System.IO.Path.Combine(Tizen.Applications.Application.Current.DirectoryInfo.Data,"cove-brightness-profiles-v2.json"),legacyPath:System.IO.Path.Combine(Tizen.Applications.Application.Current.DirectoryInfo.Data,"cove-brightness-profiles-v1.json"));
-  controls=new ControlAdapter(device,adjustableBrightness:true,profiles:profiles);QueueRefresh();
+  controls=new ControlAdapter(device,adjustableBrightness:true,profiles:profiles);sourceMonitor=new SourceMonitor(device,controls.RefreshInventory);QueueRefresh();
   focusDecoration=new View{Size2D=new Size2D(1,1),Opacity=0,AccessibilityHidden=true};FocusManager.Instance.FocusIndicator=focusDecoration;
   background=Add(new ImageView{Position2D=new Position2D(0,0),Size2D=new Size2D(1920,1080),AccessibilityHidden=true});Paint(background,"cove-cinematic-background");
   var title=Add(Label("Inputs",144,90,500,48,34));title.HorizontalAlignment=HorizontalAlignment.Begin;
@@ -62,13 +62,13 @@ internal sealed partial class NeutralWindow:NUIApplication {
   for(int i=0;i<2;i++){var icon=Add(new ImageView{Position2D=new Position2D(i==0?1442:1574,101),Size2D=new Size2D(22,22),AccessibilityHidden=true});Paint(icon,i==0?"cove-day":"cove-night");presetIcons.Add(icon);}
   settingsIcon=Add(new ImageView{Position2D=new Position2D(1729,99),Size2D=new Size2D(26,26),AccessibilityHidden=true});Paint(settingsIcon,"cove-settings");
   notice=Add(Label("Reading HDMI inputs...",240,1016,1440,38,19));notice.TextColor=Muted();
-  CreateBrightness();focusRow=1;selected=2;previousUtility=3;Draw();
+  CreateBrightness();CreateAudio();focusRow=1;selected=2;previousUtility=3;Draw();
   // The only repeating timer drains I/O and reclaims completed, bounded compositor animations.
   tick=new Tizen.NUI.Timer(100);tick.Tick+=(s,e)=>{if(!stopping&&foreground.Active)Tick();return !stopping&&foreground.Active;};tick.Start();created=true;TestCreated();
   Bootstrap.Emit(new{@event="window_created",automatic_exit=false,controls_enabled=ControlsEnabled,renderer="native_cinematic",web_engine=false});
  }
  void FocusSelected(){
-  if(!inputFocusRequested||stopping||!foreground.Active)return;View target=brightnessEditor.IsOpen?(scopeFocused?scopeButtons[scopeChoice]:brightnessSlider!):focusRow==0&&state.Ports.Length>0?cards[Math.Clamp(selected,0,state.Ports.Length-1)]:utilityCards[Math.Clamp(selected,0,3)];
+  if(!inputFocusRequested||stopping||!foreground.Active)return;View target=brightnessEditor.IsOpen?(scopeFocused?scopeButtons[scopeChoice]:brightnessSlider!):focusRow==0&&state.Ports.Length>0?cards[Math.Clamp(selected,0,state.Ports.Length-1)]:utilityCards[Math.Clamp(selected,0,AudioVisible?4:3)];
   if(ReferenceEquals(lastFocused,target))return;if(FocusManager.Instance.SetCurrentFocusView(target))lastFocused=target;
  }
  void CancelHeroFade(){
@@ -88,7 +88,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
   Place(heroArt,x,y,w,w);Paint(heroArt,"cove-cinematic-"+icon);heroArt.Opacity=.93f;
   if(changed&&animate){try{heroArt.Opacity=.84f;heroEase=new AlphaFunction();heroFade=new Animation(100){EndAction=Animation.EndActions.StopFinal};heroFade.AnimateTo(heroArt,"Opacity",.93f,heroEase);heroFade.Play();heroFadeUntil=Now()+140;}catch{CancelHeroFade();}}
  }
- void OpenTvSettings(){
+ void OpenTvSettings(bool sound=false){
   if(actionInFlight){Notify("Please wait for the current change.");return;}
   CancelHomeActivation();
   CancelInputHandoff();
@@ -96,12 +96,13 @@ internal sealed partial class NeutralWindow:NUIApplication {
   try{
    settingsHandoff.Request();
    var request=new Tizen.Applications.AppControl{ApplicationId="org.tizen.menu",Operation="http://tizen.org/appcontrol/operation/default",LaunchMode=Tizen.Applications.AppControlLaunchMode.Single};
+   if(sound)request.ExtraData.Add("menuitem","sound");
    Tizen.Applications.AppControl.SendLaunchRequest(request);
-   Bootstrap.Emit(new{@event="settings_launch_requested",caller_kept_alive=true});
+   Bootstrap.Emit(new{@event="settings_launch_requested",section=sound?"sound":"general",caller_kept_alive=true});
   }catch(Exception error){settingsHandoff.Cancel();Bootstrap.Emit(new{@event="settings_launch_failed",kind=error.GetType().Name});Notify("TV settings could not be opened. Use the remote Settings key.");}
  }
  void Notify(string text){notification=text;noticeUntil=Now()+4500;UpdateNotice();}
- void UpdateNotice(){if(notice==null)return;string text=actionInFlight&&!brightnessEditor.InFlight?"Working...":Now()<noticeUntil?notification:!inventoryObserved?"Reading HDMI inputs...":state.Ports.Length==0?"":state.Ports.Any(p=>!p.CanSelect)?"Checking input connections...":state.PicturePending?"Reading picture presets...":"";if(notice.Text!=text)notice.Text=text;}
+ void UpdateNotice(){if(notice==null)return;string text=actionInFlight&&!brightnessEditor.InFlight?"Working...":Now()<noticeUntil?notification:!inventoryObserved?"Reading HDMI inputs...":state.Ports.Length==0?"":currentInventory?.Verified==false?"Input information unavailable":state.PicturePending&&picturePendingSince>0&&Now()-picturePendingSince<InputBrightnessSettling.Budget?"Reading picture settings...":"";if(notice.Text!=text)notice.Text=text;}
  void Tick(){
   if(stopping||!foreground.Active)return;TestTick();if(stopping||!foreground.Active)return;
   if(returningToViewer){
@@ -113,8 +114,11 @@ internal sealed partial class NeutralWindow:NUIApplication {
    if(pending!=null&&QueueAction(pending))pending=null;
    return;
   }
+  ApplyInventory();
   if(brightnessEditor.Expire(Now())){Notify("Brightness response timed out. Further adjustments stopped.");DrawBrightness();FocusSelected();}
   if(foreground.TryTakeCurrent(updates,item=>item.Generation,out var fresh)){
+   fresh=fresh with{Ports=state.Ports};
+   if(currentInventory?.Verified==true&&fresh.Picture!=null&&!state.Ports.Any(p=>p.Source==fresh.Picture.Source))fresh=fresh with{Picture=null,PicturePending=false};
    bool scopeCompletion=fresh.CompletedId>0&&fresh.CompletedAction=="picture_scope";
    bool brightnessCompletion=fresh.CompletedId>0&&fresh.CompletedAction=="brightness";
    bool brightnessOnly=brightnessCompletion&&fresh.Verified&&state.Picture!=null&&BrightnessPolicy.SameIdentity(state.Picture,fresh.Picture)&&state.Ports.SequenceEqual(fresh.Ports);
@@ -130,13 +134,13 @@ internal sealed partial class NeutralWindow:NUIApplication {
    if(brightnessEditor.IsOpen&&!brightnessEditor.Observe(state.Picture)){Notify("Picture context changed. Brightness adjustment stopped.");redraw=true;brightnessOnly=false;}
    if(focusRow==0)selected=input;previousInput=input;inventoryObserved=true;
    if(!hasState&&state.Ports.Length>0){focusRow=0;int current=Array.FindIndex(state.Ports,p=>p.Source==(state.Picture?.Source??state.CurrentSource));selected=current>=0?current:0;hasState=true;}
-   if(state.Ports.Length==0){focusRow=1;selected=2;}
+   if(state.Ports.Length==0&&focusRow==0){focusRow=1;selected=AudioVisible?4:2;}
    if(state.CompletedId>0&&state.SourceRequestAccepted&&state.CompletedAction=="hdmi"){
     // If Back is held, its release owns the return. Do not expose that release
     // to the viewer just because an earlier input request finished meanwhile.
     if(!backGesture.Busy)HideToViewer("hdmi_selected");return;
    }
-   selected=Math.Clamp(selected,0,focusRow==0?Math.Max(0,state.Ports.Length-1):3);
+   selected=Math.Clamp(selected,0,focusRow==0?Math.Max(0,state.Ports.Length-1):(AudioVisible?4:3));
    if(redraw){if(brightnessOnly){DrawBrightness();DrawProfileButtons();UpdateNotice();FocusSelected();}else Draw();}
   }
   if(!inputFocusRequested){inputFocusRequested=true;Window.Default.Raise();FocusSelected();Bootstrap.Emit(new{@event="window_focus_requested",accepts_focus=Window.Default.IsFocusAcceptable(),actor_focus_set=lastFocused!=null});}
@@ -144,6 +148,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
   if(inventoryObserved&&!assetsReady&&background!.IsResourceReady()&&(state.Ports.Length==0||heroArt!.IsResourceReady()&&icons.Take(state.Ports.Length).All(i=>i.IsResourceReady()))&&settingsIcon!.IsResourceReady()&&presetIcons.All(i=>i.IsResourceReady())){assetsReady=true;Bootstrap.Emit(new{@event="assets_ready",renderer="native_cinematic",connected_ports=state.Ports.Length});}
   if(pending!=null&&QueueAction(pending))pending=null;
   PumpBrightness();
+  if(Now()-inventoryRequested>=500){inventoryRequested=Now();sourceMonitor?.Request();}
   if(state.PicturePending){if(picturePendingSince==0)picturePendingSince=Now();}else picturePendingSince=0;
   bool settlingPicture=state.PicturePending&&Now()-picturePendingSince<InputBrightnessSettling.Budget;
   if(pending==null&&!actionInFlight&&Now()-refreshed>=(settlingPicture?250:1500)&&Volatile.Read(ref workerBusy)==0)QueueRefresh();
@@ -162,7 +167,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
   }
   int heroIndex=focusRow==0?selected:Array.FindIndex(state.Ports,p=>p.Source==source);
   RefreshHero(count>0&&heroIndex>=0?state.Ports[Math.Clamp(heroIndex,0,count-1)]:null,created&&hasState);
-  DrawProfileButtons();DrawBrightness();UpdateNotice();FocusSelected();
+  DrawProfileButtons();DrawBrightness();DrawAudio();UpdateNotice();FocusSelected();
  }
  void DrawProfileButtons(){
   string? appearance=Presentation.AppearanceOf(state.Picture);
@@ -176,11 +181,11 @@ internal sealed partial class NeutralWindow:NUIApplication {
  void QueueRefresh(){
   if(stopping||returningToViewer||!foreground.Active||Interlocked.CompareExchange(ref workerBusy,1,0)!=0)return;
   refreshed=Now();var lease=foreground.Lease;var ports=state.Ports;
-  Task.Run(()=>{try{ReadState(lease,0,false);}catch(Exception e){Bootstrap.Emit(new{@event="state_read_unavailable",kind=e.GetType().Name});updates.Enqueue(new(ports.Select(p=>p with{CanSelect=false}).ToArray(),null,0,false,PicturePending:true,Generation:lease.Generation));}finally{Volatile.Write(ref workerBusy,0);}});
+  Task.Run(()=>{try{ReadState(lease,0,false);}catch(Exception e){Bootstrap.Emit(new{@event="state_read_unavailable",kind=e.GetType().Name});updates.Enqueue(new(ports,null,0,false,PicturePending:true,Generation:lease.Generation));}finally{Volatile.Write(ref workerBusy,0);}});
  }
  void ReadState(ForegroundLease lease,int completed,bool verified,string? action=null,string? status=null){
   if(lease.Cancellation.IsCancellationRequested)return;
-  var ports=controls!.RefreshSources().ToArray();int? currentSource=null;
+  var ports=sourceMonitor?.Latest?.Video??Array.Empty<PortState>();int? currentSource=null;
   if(lease.Cancellation.IsCancellationRequested)return;
   if(inventoryGeneration!=lease.Generation){inventoryGeneration=lease.Generation;try{var source=controls!.ReadSourceContext();if(!source.SourceTransition)currentSource=source.Source;}catch{}
    updates.Enqueue(new(ports,null,0,false,CurrentSource:currentSource,PicturePending:true,Generation:lease.Generation));
@@ -230,17 +235,18 @@ internal sealed partial class NeutralWindow:NUIApplication {
   if(++keys<=8)Bootstrap.Emit(new{@event="key_observed",key=key.Length<=64?key:"name_too_long"});
   if(select){if(selectDown)return;selectDown=true;}
   if(HandleBrightnessKey(key,select,false))return;
-  if(key=="Up"||key=="ArrowUp"){if(focusRow==0){previousInput=selected;focusRow=1;selected=Math.Clamp(previousUtility,0,3);}}
+  if(key=="Up"||key=="ArrowUp"){if(focusRow==0){previousInput=selected;focusRow=1;selected=Math.Clamp(previousUtility,0,AudioVisible?4:3);}}
   else if(key=="Down"||key=="ArrowDown"){if(focusRow==1&&state.Ports.Length>0){previousUtility=selected;focusRow=0;selected=Math.Clamp(previousInput,0,state.Ports.Length-1);}}
   else if(key=="Left"||key=="ArrowLeft")selected=focusRow==1?MoveUtility(-1):Math.Max(0,selected-1);
   else if(key=="Right"||key=="ArrowRight")selected=focusRow==1?MoveUtility(1):Math.Min(Math.Max(0,state.Ports.Length-1),selected+1);
   else if(select){
    CancelHomeActivation();
    if(focusRow==1&&selected==2){OpenTvSettings();return;}
+   if(focusRow==1&&selected==4&&AudioVisible){OpenTvSettings(true);return;}
    if(focusRow==1&&selected==3){OpenBrightness();return;}
    if(!ControlsEnabled){notice!.Text="This control is unavailable.";return;}
    if(pending!=null||actionInFlight){Notify("Please wait for the current change.");return;}if(requestId==int.MaxValue){Notify("Please close and reopen the launcher.");return;}
-   if(focusRow==0&&selected<state.Ports.Length){if(!state.Ports[selected].CanSelect){Notify("That input is being checked. Please try again.");return;}pending=new(++requestId,"hdmi",state.Ports[selected].Port,null);}
+   if(focusRow==0&&selected<state.Ports.Length){pending=new(++requestId,"hdmi",state.Ports[selected].Port,null);}
    else if(focusRow==1){var mode=selected==0?Appearance.Day:Appearance.Night;if(!Presentation.PresetAvailable(state.Picture,mode)){Notify("Unavailable for this input.");return;}pending=new(++requestId,"appearance",null,mode,new BrightnessChange(state.Picture!,mode==Appearance.Day?state.Picture!.DayBrightness:state.Picture!.NightBrightness));}if(pending!=null){actionInFlight=true;if(QueueAction(pending))pending=null;}
   }
   Draw();

@@ -7,12 +7,13 @@
  const ports = [
   {number:1,label:'Apple TV',connected:true,awake:true},
   {number:2,label:'PlayStation 5',connected:true,awake:false},
-  {number:3,label:'HDMI 3',connected:false,awake:false},
+  {number:3,label:'Soundbar',connected:true,awake:false,audio:true,returnChannel:'eARC'},
   {number:4,label:'Nintendo Switch',connected:true,awake:false}
  ];
  let current = 1, lastPort = 1, opener = null, toastTimer, heroTimer;
  const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)');
  const sources = [];
+ const audioButton=$('#audio-output');
  const utility = [$('#brightness'),$('#day'),$('#night'),$('#settings')];
  let brightnessDraft=null,pictureScope='current',picturePending=false;
  const pictures=new Map([[1,{mode:'Standard SDR',value:50,scopeAvailable:true}],[2,{mode:'Game HDR',value:50,scopeAvailable:false}],[3,{mode:'Standard SDR',value:50,scopeAvailable:true}],[4,{mode:'Game SDR',value:50,scopeAvailable:false}]]);
@@ -20,10 +21,11 @@
  function picture(){return pictures.get(current);}
  function levels(){return profileLevels;}
  function selectedProfile(){const p=levels(),value=picture().value;if(!picturePending&&p.selected&&p[p.selected]===value)return p.selected;return null;}
- function eligible(){return !picturePending&&ports[current-1]?.connected&&ports[current-1]?.awake&&['current','all'].includes(pictureScope);}
+ function eligible(){return !picturePending&&ports[current-1]?.connected&&!ports[current-1]?.audio&&ports[current-1]?.awake&&['current','all'].includes(pictureScope);}
 
  const brightnessPanel=$('#brightness-panel'),brightnessRange=$('#brightness-range');
  const connected = () => sources.filter(el => !el.hidden);
+ const navigation=()=>audioButton.hidden?utility:[audioButton,...utility];
  function iconFor(label){const name=label.toLowerCase();
   if(name.includes('apple tv')||name.includes('appletv'))return 'tv';
   if(name.includes('playstation 5')||name==='ps5'||name.startsWith('ps5 ')||name.endsWith(' ps5'))return 'game';
@@ -40,7 +42,7 @@
  function render(){
   const active=document.activeElement, previous=Number(active?.dataset.port)||lastPort;
   ports.forEach((port,index)=>{
-   const el=sources[index];el.hidden=!port.connected;
+   const el=sources[index];el.hidden=!port.connected||!!port.audio;
    const name=port.label.trim()||`HDMI ${port.number}`;
    el.querySelector('.source-label').textContent=name;
 
@@ -50,6 +52,9 @@
    el.setAttribute('aria-label',`${name}, HDMI ${port.number}${port.number===current?', current input':''}${!port.awake?', sleeping':''}, preview`);
    if(port.number===current)el.setAttribute('aria-current','true');else el.removeAttribute('aria-current');
   });
+  const audio=ports.filter(p=>p.connected&&p.audio);audioButton.hidden=!audio.length;
+  if(audio.length){const p=audio[0];$('#audio-name').textContent=audio.length===1?(p.label.trim()||'Sound system'):'Sound settings';$('#audio-connection').textContent=audio.length===1?`HDMI ${p.number}${p.returnChannel==='eARC'?' · eARC':''}`:`${audio.length} connected`;audioButton.setAttribute('aria-label',`Sound settings, ${$('#audio-name').textContent}, ${$('#audio-connection').textContent}`);}
+  if(active===audioButton&&audioButton.hidden)$('#brightness').focus();
   const available=connected();$('#empty-state').hidden=available.length!==0;
   $('#input-count').textContent=`${available.length} connected`;
 
@@ -62,8 +67,8 @@
   renderHero();
  }
  function renderHero(){
-  const toolbar=utility.includes(document.activeElement)||!!brightnessDraft;
-  const port=ports.find(p=>p.number===(toolbar?current:lastPort)&&p.connected)||(!toolbar&&ports.find(p=>p.connected));
+  const toolbar=navigation().includes(document.activeElement)||!!brightnessDraft;
+  const port=ports.find(p=>p.number===(toolbar?current:lastPort)&&p.connected&&!p.audio)||(!toolbar&&ports.find(p=>p.connected&&!p.audio));
   $('.hero').hidden=!port;if(!port)return;
   $('#hero-name').textContent=port.label.trim()||`HDMI ${port.number}`;
   $('#hero-current').hidden=port.number!==current;
@@ -74,7 +79,7 @@
   const el=document.createElement('button');el.className='source';el.type='button';el.dataset.port=port.number;
   el.innerHTML='<img class="poster" alt="" aria-hidden="true"><span class="source-label"></span><span class="port-label"></span><span class="current-badge">Current</span>';
   el.addEventListener('focus',()=>{lastPort=port.number;renderHero();});
-  el.addEventListener('click',()=>{if(!port.connected)return;const follow=eligible()?selectedProfile():null,changed=current!==port.number;current=port.number;if(changed&&follow&&eligible())picture().value=levels()[follow];render();notify(`Preview: selected ${port.label}. On TV, Cove returns to the HDMI picture.`);});
+  el.addEventListener('click',()=>{if(!port.connected||port.audio)return;const follow=eligible()?selectedProfile():null,changed=current!==port.number;current=port.number;if(changed&&follow&&eligible())picture().value=levels()[follow];render();notify(`Preview: selected ${port.label}. On TV, Cove returns to the HDMI picture.`);});
   sources.push(el);$('.sources').append(el);
   const row=document.createElement('div');row.className='simulation-row';row.dataset.simulationPort=port.number;
   const label=document.createElement('label');label.textContent=`HDMI ${port.number}`;
@@ -82,7 +87,7 @@
   ['connected','sleep'].forEach(kind=>{const button=document.createElement('button');button.type='button';button.dataset.sim=kind;button.setAttribute('aria-label',`${kind==='connected'?'Connection':'Sleep state'} for HDMI ${port.number}`);button.addEventListener('click',()=>{if(kind==='connected')port.connected=!port.connected;else port.awake=!port.awake;render();simulationRows();});row.append(button);});$('#simulation-ports').append(row);
  });
  function simulationRows(){ports.forEach(port=>{const row=$(`[data-simulation-port="${port.number}"]`);row.querySelector('input').value=port.label;const conn=row.querySelector('[data-sim="connected"]'),sleep=row.querySelector('[data-sim="sleep"]');conn.textContent=port.connected?'Connected':'Unplugged';conn.setAttribute('aria-pressed',String(port.connected));sleep.textContent=port.awake?'Awake':'Sleeping';sleep.setAttribute('aria-pressed',String(!port.awake));});}
- utility.forEach(el=>el.addEventListener('focus',renderHero));
+ [audioButton,...utility].forEach(el=>el.addEventListener('focus',renderHero));
  utility.slice(1,3).forEach(el=>el.addEventListener('click',()=>{if(el.getAttribute('aria-disabled')==='true'){notify('Brightness is unavailable for the current picture.');return;}picture().value=levels()[el.id];levels().selected=el.id;render();}));
  function scopeLabel(){return pictureScope==='all'?'All sources':pictureScope==='current'?'Current source':'Scope unavailable';}
  function drawBrightness(){const value=Number(brightnessRange.value);$('#brightness-title').textContent=brightnessDraft?.profile?`${brightnessDraft.profile==='day'?'Bright':'Dim'} level`:'Brightness';$('#brightness-value').textContent=value;$('#brightness-fill').style.transform=`scaleX(${value/50})`;$('#scope-current').setAttribute('aria-pressed',String(pictureScope==='current'));$('#scope-all').setAttribute('aria-pressed',String(pictureScope==='all'));for(const button of [$('#scope-current'),$('#scope-all')]){button.hidden=!picture().scopeAvailable;button.setAttribute('aria-disabled',String(!picture().scopeAvailable));}$('#scope-readonly').hidden=picture().scopeAvailable;$('#scope-readonly').textContent=scopeLabel();brightnessRange.setAttribute('aria-label',$('#brightness-title').textContent);brightnessRange.setAttribute('aria-valuetext',`${value} of 50, ${scopeLabel()}`);}
@@ -92,13 +97,14 @@
  function closeBrightness(){if(!brightnessDraft)return;brightnessDraft=null;brightnessPanel.hidden=true;for(const el of home.children)el.inert=false;$('#brightness').setAttribute('aria-expanded','false');$('#brightness').focus();render();}
  $('#brightness').addEventListener('click',()=>{if($('#brightness').getAttribute('aria-disabled')==='true'){notify(pictureScope===null?'Picture settings scope is unavailable. Try again.':'Unavailable for this input.');return;}brightnessDraft={source:current,mode:picture().mode,scope:pictureScope,profile:selectedProfile()};brightnessRange.value=picture().value;drawBrightness();brightnessPanel.hidden=false;for(const el of home.children)el.inert=el!==brightnessPanel;$('#brightness').setAttribute('aria-expanded','true');brightnessRange.focus();});
  brightnessRange.addEventListener('input',adjustBrightness);document.addEventListener('pointerdown',e=>{if(brightnessDraft&&!brightnessPanel.contains(e.target))closeBrightness();});
+ audioButton.addEventListener('click',()=>notify('Preview: opens Samsung Sound settings directly.'));
  $('#settings').addEventListener('click',()=>notify('Preview: opens Samsung picture & sound settings directly.'));
  function open(){opener=document.activeElement;simulation.hidden=false;home.inert=true;home.setAttribute('aria-hidden','true');$('#close-simulation').focus();}
  function close(){simulation.hidden=true;home.inert=false;home.removeAttribute('aria-hidden');const target=opener&&!opener.hidden?opener:sources.find(el=>Number(el.dataset.port)===lastPort&&!el.hidden)||$('#settings');target.focus();}
  $('#open-simulation').addEventListener('click',open);$('#close-simulation').addEventListener('click',close);simulation.addEventListener('click',e=>{if(e.target===simulation)close();});$('#simulate-unknown').addEventListener('click',()=>notify('Preview: read unavailable; last known connections retained.'));
  window.previewPictureContext=Object.freeze({get:()=>({source:current,...picture(),scope:pictureScope,pending:picturePending,profile:selectedProfile(),levels:{...levels()}}),set:state=>{const before={source:current,mode:picture().mode,value:picture().value,pending:picturePending};if(typeof state.pending==='boolean')picturePending=state.pending;if(Number.isInteger(state.source)&&state.source>=1&&state.source<=4)current=state.source;if(typeof state.mode==='string')picture().mode=state.mode;if(!picturePending&&Number.isInteger(state.value)&&state.value>=0&&state.value<=50)picture().value=state.value;if(!before.pending&&!picturePending&&before.source===current&&before.mode===picture().mode&&before.value!==picture().value)levels().selected=null;render();}});
  window.previewPictureScope=Object.freeze({setCurrentSource:enabled=>{pictureScope=enabled===true?'current':'all';render();},set:scope=>{pictureScope=['current','all'].includes(scope)?scope:null;render();}});
- window.previewInputs=Object.freeze({get:()=>ports.map(p=>({...p})),update:(number,state)=>{const port=ports.find(p=>p.number===number);if(!port)throw new RangeError('Preview port must be 1–4');if(typeof state.connected==='boolean')port.connected=state.connected;if(typeof state.awake==='boolean')port.awake=state.awake;if(typeof state.label==='string')port.label=state.label.trim().slice(0,32)||`HDMI ${number}`;render();simulationRows();}});
+ window.previewInputs=Object.freeze({get:()=>ports.map(p=>({...p})),update:(number,state)=>{const port=ports.find(p=>p.number===number);if(!port)throw new RangeError('Preview port must be 1–4');if(typeof state.connected==='boolean')port.connected=state.connected;if(typeof state.audio==='boolean')port.audio=state.audio;if('returnChannel' in state)port.returnChannel=state.returnChannel==='eARC'?'eARC':null;if(typeof state.awake==='boolean')port.awake=state.awake;if(typeof state.label==='string')port.label=state.label.trim().slice(0,32)||`HDMI ${number}`;render();simulationRows();}});
  document.addEventListener('keydown',e=>{
   const key=e.key,editing=document.activeElement?.tagName==='INPUT';
   if(brightnessDraft){
@@ -115,11 +121,11 @@
   if(key.toLowerCase()==='i'&&!editing&&simulation.hidden){e.preventDefault();open();return;}
   if((key==='Escape'||key==='Backspace'||e.keyCode===10009)&&!(editing&&key==='Backspace')){e.preventDefault();if(!simulation.hidden)close();else{$('#toast').hidden=true;(sources.find(el=>Number(el.dataset.port)===lastPort&&!el.hidden)||$('#settings')).focus();}return;}
   if(!simulation.hidden){if(key==='Tab'||key==='ArrowDown'||key==='ArrowUp'){e.preventDefault();const choices=Array.from(simulation.querySelectorAll('button,input')),i=choices.indexOf(document.activeElement),direction=key==='ArrowUp'||key==='Tab'&&e.shiftKey?-1:1;choices[(i+direction+choices.length)%choices.length].focus();}return;}
-  if(!key.startsWith('Arrow'))return;e.preventDefault();const visible=connected(),active=document.activeElement,row=visible.includes(active)?visible:utility.includes(active)?utility:visible,index=Math.max(0,row.indexOf(active));
+  if(!key.startsWith('Arrow'))return;e.preventDefault();const visible=connected(),toolbar=navigation(),active=document.activeElement,row=visible.includes(active)?visible:toolbar.includes(active)?toolbar:visible,index=Math.max(0,row.indexOf(active));
   if(!row.length){$('#settings').focus();return;}
   if(key==='ArrowLeft'||key==='ArrowRight')row[Math.max(0,Math.min(row.length-1,index+(key==='ArrowRight'?1:-1)))].focus();
   else if(key==='ArrowUp'&&row===visible)utility[Math.min(index,utility.length-1)].focus();
-  else if(key==='ArrowDown'&&row===utility&&visible.length)(visible.find(el=>Number(el.dataset.port)===lastPort)||visible[0]).focus();
+  else if(key==='ArrowDown'&&row===toolbar&&visible.length)(visible.find(el=>Number(el.dataset.port)===lastPort)||visible[0]).focus();
  });
  window.addEventListener('resize',fit);fit();render();simulationRows();sources[0].focus({preventScroll:true});
 })();

@@ -8,7 +8,8 @@ A lightweight, native HDMI launcher for Samsung Tizen TVs.
 
 ## Features
 
-- Connected inputs, recognizable artwork and a separate current-input indicator.
+- Connected inputs that refresh while Cove is open or hidden, recognizable artwork and a separate current-input indicator.
+- A detected HDMI sound-system shortcut with its port, opening Samsung Sound settings.
 - Fast remote navigation, a cached Home screen and direct Samsung Settings.
 - Live brightness, including supported Game Mode contexts.
 - Two shared, customizable **Bright / Dim** levels that leave the native picture mode selected.
@@ -23,7 +24,8 @@ and [recovery](docs/recovery.md) before adapting it.
 
 Arrow keys preview inputs; Select opens one. **Current input** marks the source
 actually playing. Brightness and profiles always target that source, not a
-highlighted card. The cog opens Samsung Settings; Back returns to HDMI.
+highlighted card. The sound-system button opens Sound settings; its connection
+label identifies the HDMI port. The cog opens Samsung Settings; Back returns to HDMI.
 
 Bright starts at **50**, Dim at **0**. Select a profile, then adjust Brightness to
 customize its shared number. Left/Right applies live; Select or Back closes the
@@ -41,6 +43,9 @@ Sharing profile numbers does not broadcast settings to every input.
 
 The renderer is in `src/Cove.Native`; the offline simulator is in `preview`.
 Host checks use simulated platform APIs and do not contact a TV.
+Run `python scripts/check.py --browser` for the combined regression suite.
+See the [feature coverage and setup](docs/regression-testing.md). The same checks
+run on pushes and pull requests; no CI job connects to a TV.
 
 ```text
 python -m unittest discover -s tests -p "test_*.py"

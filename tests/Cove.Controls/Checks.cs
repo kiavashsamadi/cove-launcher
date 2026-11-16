@@ -23,7 +23,7 @@ internal static class Checks {
   var inventory=new SourceInventory();var ports=inventory.Update(Sources);Require(ports.Count==3);Require(ports[0].Label=="Apple TV"&&ports[0].CanSelect);Require(ports.Any(p=>p.Port==4));
   ports=inventory.Update("bad");Require(ports.Count==3&&ports.All(p=>!p.CanSelect));
   ports=inventory.Update(Sources.Replace("\"connectionState\":true,\"detectedName\":\"Switch\"","\"connectionState\":false,\"detectedName\":\"\""));Require(ports.Count==2);
-  ports=inventory.Update(Sources.Replace("\"Switch\"","\"\""));Require(ports.Single(p=>p.Port==4).Label=="Switch");
+  ports=inventory.Update(Sources.Replace("\"Switch\"","\"\""));Require(ports.Single(p=>p.Port==4).Label=="HDMI 4");
   // A fresh launcher must not invent a product name for a nameless connected
   // device. Connection alone controls visibility, not name or standby power.
   string unnamed=Sources.Replace("\"detectedName\":\"Switch\"","\"editName\":\"\",\"detectedName\":\"\",\"powerState\":2");
@@ -63,7 +63,7 @@ internal static class Checks {
    result=new ControlAdapter(fake,()=>100,adjustableBrightness:true).Execute(request,cancel.Token);
    Require(!result.Verified&&fake.Reads.Count==unread&&fake.Writes.Count==0&&fake.Connections.Count==0);
   }
-  count+=BrightnessChecks.Run();count+=ProfileChecks.Run();count+=InputBrightnessChecks.Run();count+=ObservationChecks.Run();
+  count+=BrightnessChecks.Run();count+=ProfileChecks.Run();count+=InputBrightnessChecks.Run();count+=ObservationChecks.Run();count+=SourceChecks.Run();
   // Back uses fresh current-source context, with no highlighted/cached port.
   foreach(int source in new[]{13,14,16}){
    var fake=new Fake();for(int i=0;i<3;i++)fake.Reads.Enqueue(Snapshot(source));

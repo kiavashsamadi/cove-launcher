@@ -20,3 +20,6 @@ artifacts/
 *token-cache*
 __pycache__/
 .DS_Store
+
+# Optional browser-check dependencies
+node_modules/

@@ -17,6 +17,14 @@ Actual TV font, input inventory and installed renderer. No media content is capt
 
 ![Apple TV as the current input, with live brightness, Bright/Dim and Settings controls](images/cove-launcher.png)
 
+## Sound settings shortcut
+
+![Detected sound system with HDMI port and verified eARC capability, focused beside Brightness](images/cove-audio.png)
+
+The sample audio endpoint is separate from the video cards. Its button opens
+Samsung Sound settings; capability and port labels come from native reports
+on the TV. The eARC label is omitted when capability is unknown.
+
 ## PlayStation 5
 
 ![PlayStation 5 as the current input, with brightness-only Bright/Dim controls](images/cove-playstation5.png)
@@ -55,3 +63,7 @@ The ellipsis is temporary while the current picture context is unsettled.
 Brightness and profiles become available after valid observations; ordinary
 HDMI navigation remains separate. This preview illustrates the state, not the
 TV's transition timing.
+
+Regenerate offline images with `node scripts/capture-preview.cjs` after installing
+the browser dependencies described in [regression testing](regression-testing.md).
+The native capture is obtained and reviewed separately.

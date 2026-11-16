@@ -10,8 +10,8 @@ internal sealed partial class NeutralWindow {
  TextLabel? brightnessButtonLabel,brightnessValue,brightnessTitle,scopeReadOnly;bool profileSavePending;
  readonly List<View> scopeButtons=new();readonly List<TextLabel> scopeLabels=new();bool scopeFocused;int scopeChoice;
  View? brightnessFill,brightnessThumb,brightnessSlider,scopeGroup;
- static readonly int[] UtilityOrder={3,0,1,2};
- int MoveUtility(int direction){int i=Array.IndexOf(UtilityOrder,selected);return UtilityOrder[Math.Clamp(i+direction,0,3)];}
+ int[] UtilityOrder=>AudioVisible?new[]{4,3,0,1,2}:new[]{3,0,1,2};
+ int MoveUtility(int direction){var order=UtilityOrder;int i=Array.IndexOf(order,selected);return order[Math.Clamp(i+direction,0,order.Length-1)];}
  void CreateBrightness(){
   var button=Add(SurfaceBox(1168,78,226,68));button.BackgroundColor=new Color(0,0,0,0);button.Focusable=true;button.AccessibilityRole=Role.PushButton;button.AccessibilityHighlightable=true;button.AccessibilityName="Display brightness";utilityCards.Add(button);
   brightnessButtonLabel=Add(Label("Brightness",1180,78,202,68,18));utilityNames.Add(brightnessButtonLabel);

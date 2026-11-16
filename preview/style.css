@@ -26,3 +26,6 @@
 .scope-readonly{grid-column:1/-1;display:block;width:100%;padding:9px 0;color:#a7b5c9;font-size:18px;text-align:center}
 
 .brightness-scope:has(.scope-readonly:not([hidden])){background:transparent}
+
+/* Audio is an output shortcut, separate from the selectable video dock. */
+.audio-button{width:278px;height:68px;flex-shrink:0;justify-content:flex-start;gap:18px;padding:0 20px;border:1px solid #ffffff0b;border-radius:17px;background:#ffffff03;text-align:left}.audio-button svg{width:48px;height:24px;flex-shrink:0;color:#b4c1d1}.audio-copy{display:flex;min-width:0;flex-direction:column;gap:0}#audio-name{font-size:22px;line-height:33px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e1e5ec}#audio-connection{font-size:17px;line-height:25px;color:#9baabe;white-space:nowrap}

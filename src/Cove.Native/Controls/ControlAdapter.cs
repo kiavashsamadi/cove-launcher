@@ -2,12 +2,15 @@
 using System;using System.Collections.Generic;using System.Diagnostics;using System.Linq;using System.Text;using System.Text.Json;using System.Threading;
 namespace Cove.Launcher;
 internal sealed record PortState(int Port,int Source,string Label,bool Connected,bool CanSelect,bool AudioEndpoint=false);
+internal sealed record SourceSnapshot(PortState[] Video,PortState[] Audio,bool Verified,string? AudioReturnChannel=null);
 internal enum PictureScope {Unknown=-1,AllSources=0,CurrentSource=1}
 internal sealed record DeviceSnapshot(int Source,string Mode,int Brightness,IReadOnlySet<string> AvailableModes,long ObservedAt,bool SourceTransition,PictureScope Scope=PictureScope.Unknown,bool BrightnessAvailable=false,bool ScopeAvailable=false,int DayBrightness=50,int NightBrightness=0,Appearance? ProfileSelected=null);
 internal interface IDevice {
  DeviceSnapshot ReadPicture();
  (int Source,bool SourceTransition) ReadSourceContext(){var state=ReadPicture();return(state.Source,state.SourceTransition);}
  string ReadSources();
+ IDisposable? WatchSources(Action changed)=>null;
+ string? ReadAudioReturnChannel()=>null;
  bool SetBrightness(int value);
  bool SetPictureScope(PictureScope scope);
  bool HasBrightnessRange();
@@ -40,13 +43,20 @@ internal static class ControlProtocol {
 }
 internal sealed class SourceInventory {
  readonly Dictionary<int,PortState> remembered=new();
+ internal bool Verified {get;private set;}
+ internal PortState[] Audio=>remembered.Values.Where(p=>p.Connected&&p.AudioEndpoint).OrderBy(p=>p.Port).ToArray();
  internal IReadOnlyList<PortState> Update(string? json){
+  Verified=false;
   try{
    if(json==null||Encoding.UTF8.GetByteCount(json)>16384)throw new FormatException();
    using var doc=JsonDocument.Parse(json,new JsonDocumentOptions{MaxDepth=5});
    if(doc.RootElement.ValueKind!=JsonValueKind.Array||doc.RootElement.GetArrayLength()>32)throw new FormatException();
-   var next=new Dictionary<int,PortState>();
+   var next=new Dictionary<int,PortState>();var uncertain=new HashSet<int>();bool unidentified=false;
    foreach(var row in doc.RootElement.EnumerateArray()){
+    if(row.ValueKind!=JsonValueKind.Object||!row.TryGetProperty("sourceType",out var identity)||identity.ValueKind!=JsonValueKind.Number||!identity.TryGetInt32(out int rowSource)){unidentified=true;continue;}
+    if(rowSource<13||rowSource>16)continue;
+    int rowPort=rowSource-12;
+    try{
     var fields=new Dictionary<string,JsonElement>(StringComparer.Ordinal);
     foreach(var p in row.EnumerateObject())if(!fields.TryAdd(p.Name,p.Value))throw new FormatException();
     if(!fields.TryGetValue("sourceType",out var type)||!type.TryGetInt32(out int source))throw new FormatException();
@@ -58,17 +68,24 @@ internal sealed class SourceInventory {
      if(fields.TryGetValue(key,out var name)){if(name.ValueKind!=JsonValueKind.String)throw new FormatException();string candidate=name.GetString()!;if(candidate.Length>256)throw new FormatException();if(label.Length==0)label=Uri.UnescapeDataString(candidate);}
     }
     label=new string(label.Where(c=>!char.IsControl(c)).ToArray()).Trim();
-    if(label.Length==0)label=remembered.TryGetValue(port,out var previous)?previous.Label:$"HDMI {port}";
     bool audio=false;
     if(fields.TryGetValue("iconPath",out var icon)){
      if(icon.ValueKind!=JsonValueKind.String||icon.GetString()!.Length>1024)throw new FormatException();
      audio=icon.GetString()=="/usr/apps/com.samsung.tv.theme-resource/shared/res/VD_ICONS/i_icon_device_m_speaker.svg"||icon.GetString()=="/opt/usr/apps/com.samsung.tv.theme-resource/shared/res/VD_ICONS/i_icon_device_m_speaker.svg";
     }
-    if(!next.TryAdd(port,new PortState(port,source,label,connected.GetBoolean(),connected.GetBoolean()&&!audio,audio)))throw new FormatException();
+    // Remember a late/blank name only within a continuous connection of the
+    // same device class. An unplug/replug must not inherit the old product.
+    if(label.Length==0)label=connected.GetBoolean()&&remembered.TryGetValue(port,out var previous)&&previous.Connected&&previous.AudioEndpoint==audio?previous.Label:$"HDMI {port}";
+    if(!next.TryAdd(port,new PortState(port,source,label,connected.GetBoolean(),connected.GetBoolean()&&!audio,audio)))uncertain.Add(port);
+    }catch(Exception e)when(e is JsonException||e is FormatException||e is InvalidOperationException||e is ArgumentException){uncertain.Add(rowPort);}
    }
-   // An incomplete response is not evidence that a missing cable was removed.
-   if(next.Count!=4)throw new FormatException();
+   // This API returns an inventory, not a fixed four-row table. A well-formed
+   // snapshot may omit disconnected ports entirely, including every port.
+   // A malformed row affects only its port; unrelated valid cards stay usable.
+   foreach(var old in remembered){if(uncertain.Contains(old.Key)||unidentified&&!next.ContainsKey(old.Key))next[old.Key]=old.Value with{CanSelect=false};}
+   foreach(int port in uncertain)if(!remembered.ContainsKey(port))next.Remove(port);
    remembered.Clear();foreach(var p in next)remembered.Add(p.Key,p.Value);
+   Verified=!unidentified&&uncertain.Count==0;
   }catch(Exception e)when(e is JsonException||e is FormatException||e is InvalidOperationException||e is ArgumentException){
    foreach(int key in remembered.Keys.ToArray())remembered[key]=remembered[key] with{CanSelect=false};
   }
@@ -91,7 +108,13 @@ internal sealed class ControlAdapter {
  }}
  internal bool FlushProfiles()=>profiles.Flush(true);
  internal (int Source,bool SourceTransition) ReadSourceContext(){lock(deviceGate)return device.ReadSourceContext();}
- internal IReadOnlyList<PortState> RefreshSources(){lock(deviceGate){try{return inventory.Update(device.ReadSources());}catch{return inventory.Update(null);}}}
+ internal SourceSnapshot RefreshInventory(){lock(deviceGate){
+  IReadOnlyList<PortState> video;try{video=inventory.Update(device.ReadSources());}catch{video=inventory.Update(null);}
+  var audio=inventory.Audio;string? channel=null;
+  if(inventory.Verified&&audio.Length==1){try{channel=device.ReadAudioReturnChannel();}catch{}}
+  return new(video.ToArray(),audio,inventory.Verified,channel=="eARC"?channel:null);
+ }}
+ internal IReadOnlyList<PortState> RefreshSources()=>RefreshInventory().Video;
  internal ControlResult Execute(Request request,CancellationToken foreground=default){lock(deviceGate)return ExecuteLocked(request,foreground);}
  ControlResult ExecuteLocked(Request request,CancellationToken foreground){
   if(Interlocked.CompareExchange(ref busy,1,0)!=0)return new(false,"busy");
@@ -135,6 +158,9 @@ internal sealed class ControlAdapter {
      }
     }
     if(foreground.IsCancellationRequested)return new(false,"foreground_interrupted");
+    // Picture reads above may outlast a cable change. Revalidate the chosen
+    // physical port immediately before the native source request.
+    if(!RefreshSources().Any(p=>p.Port==port&&p.CanSelect))return new(false,"connection_unverified");
     int code=device.ConnectHdmi(port+12);sourceAccepted=code==1;
     // Source acceptance is not picture readiness. Publish it immediately so
     // the UI can relinquish its window before any destination settings reads.

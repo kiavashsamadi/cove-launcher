@@ -11,7 +11,13 @@ dock restores the last card preview. Port numbers stay on cards.
 TV-reported names choose labels and artwork. Unknown devices receive a generic
 HDMI label rather than a guessed console name. Unplugged inputs disappear;
 connected sleeping devices can remain. Failed inventory reads retain previous
-cards with selection guarded.
+cards as temporary hints; selecting one performs a fresh native check rather
+than waiting indefinitely. A bad report for one port does not disable the other
+valid inputs. See [HDMI and audio behavior](hdmi-audio.md).
+
+A detected HDMI sound system appears immediately left of Brightness, with its
+reported name and physical port. It opens the native Sound category. It is not
+a video-input card or a claim about the currently active audio output.
 
 The cog opens native Settings directly. Back preserves the outgoing frame until
 the HDMI handoff; hidden preparation resets focus for the next Home opening.

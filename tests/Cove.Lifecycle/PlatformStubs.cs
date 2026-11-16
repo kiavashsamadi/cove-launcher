@@ -17,8 +17,8 @@ namespace Tizen.Applications {
    public void Add(string key,string value)=>values[key]=value;
    public bool TryGet(string key,out string value)=>values.TryGetValue(key,out value!);
   }
-  public static readonly List<string?> Launches=new();
-  public static void SendLaunchRequest(AppControl request)=>Launches.Add(request.ApplicationId);
+  public static readonly List<string?> Launches=new();public static AppControl? LastRequest;
+  public static void SendLaunchRequest(AppControl request){LastRequest=request;Launches.Add(request.ApplicationId);}
  }
  public class ReceivedAppControl:AppControl {public string? CallerApplicationId{get;set;}}
 }

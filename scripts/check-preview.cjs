@@ -1,0 +1,51 @@
+const {chromium}=require('playwright');
+const {spawn}=require('node:child_process'),assert=require('node:assert/strict'),fs=require('node:fs');
+const path=require('node:path'),root=path.resolve(__dirname,'..');
+(async()=>{
+ const server=spawn(process.env.PYTHON||'python',[root+'/scripts/preview.py','--port','8774'],{windowsHide:true});
+ const errors=[],outside=[],checks=[];let browser;
+ try{
+  await new Promise((resolve,reject)=>{server.stdout.once('data',resolve);server.once('error',reject);server.once('exit',code=>reject(new Error('server exited '+code)));});
+  browser=await chromium.launch({headless:true,...(process.env.BROWSER_CHANNEL?{channel:process.env.BROWSER_CHANNEL}:{})});const page=await browser.newPage({viewport:{width:1920,height:1080}});
+  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8774/'))outside.push(r.url());});
+  await page.goto('http://127.0.0.1:8774/');await page.locator('.source').first().waitFor();
+  const ctx=()=>page.evaluate(()=>previewPictureContext.get());
+  assert.equal(await page.locator('[data-port="3"]').isVisible(),false);assert.equal(await page.locator('#audio-name').textContent(),'Soundbar');assert.equal(await page.locator('#audio-connection').textContent(),'HDMI 3 · eARC');
+  await page.locator('#brightness').focus();await page.keyboard.press('ArrowLeft');assert.equal(await page.locator(':focus').getAttribute('id'),'audio-output');
+  await page.keyboard.press('Enter');assert.match(await page.locator('#toast').textContent(),/Sound settings/);assert.equal((await page.evaluate(()=>previewPictureContext.get())).source,1);
+  await page.evaluate(()=>previewInputs.update(3,{connected:false}));assert.equal(await page.locator('#audio-output').isVisible(),false);assert.equal(await page.locator(':focus').getAttribute('id'),'brightness');
+  await page.evaluate(()=>previewInputs.update(3,{connected:true,returnChannel:null}));assert.equal(await page.locator('#audio-connection').textContent(),'HDMI 3');
+  await page.evaluate(()=>previewInputs.update(3,{returnChannel:'eARC'}));
+  const audioBox=await page.locator('#audio-output').boundingBox(),brightnessBox=await page.locator('#brightness').boundingBox();assert(audioBox.x+audioBox.width<=brightnessBox.x-18);assert(audioBox.y===brightnessBox.y);assert(audioBox.x>800);
+  checks.push('Detected audio is separate from video; Sound action preserves source; unplug repairs focus; uncertain eARC is omitted');
+
+  assert.equal((await ctx()).profile,null);
+  await page.locator('#brightness').click();assert.equal(await page.locator('#brightness-title').textContent(),'Brightness');await page.keyboard.press('ArrowLeft');await page.keyboard.press('Escape');assert.equal((await ctx()).value,49);assert.deepEqual((await ctx()).levels,{day:50,night:0,selected:null});
+  checks.push('Numeric matches do not imply Bright/Dim; manual slider leaves both memories untouched');
+  await page.locator('#night').click();await page.locator('#brightness').click();assert.equal(await page.locator('#brightness-title').textContent(),'Dim level');await page.keyboard.press('ArrowRight');await page.keyboard.press('Escape');assert.equal((await ctx()).levels.night,1);
+  await page.evaluate(()=>previewInputs.update(2,{awake:true}));await page.locator('[data-port="2"]').focus();assert.equal((await ctx()).source,1);assert.equal((await ctx()).value,1);assert.equal(await page.locator('#hero-name').textContent(),'PlayStation 5');
+  await page.keyboard.press('ArrowUp');assert.equal(await page.locator('#hero-name').textContent(),'Apple TV');await page.keyboard.press('ArrowDown');assert.equal(await page.locator(':focus').getAttribute('data-port'),'2');
+  checks.push('Hover never switches or writes; toolbar shows actual target; Down restores preview focus');
+  await page.locator('[data-port="2"]').click();assert.equal((await ctx()).value,1);assert.equal((await ctx()).profile,'night');assert.equal((await ctx()).mode,'Game HDR');
+  await page.locator('#brightness').click();assert.equal(await page.locator('#scope-current').isVisible(),false);assert.equal(await page.locator('#scope-all').isVisible(),false);assert.equal(await page.locator('#scope-readonly').textContent(),'Current source');await page.keyboard.press('ArrowDown');assert.equal(await page.locator(':focus').getAttribute('id'),'brightness-range');await page.keyboard.press('Tab');assert.equal(await page.locator(':focus').getAttribute('id'),'brightness-range');await page.keyboard.press('ArrowLeft');await page.keyboard.press('ArrowLeft');assert.equal((await ctx()).value,0);await page.keyboard.press('Escape');
+  checks.push('Dim follows awake PS5; Game stays selected; unavailable scope is read-only and skipped');
+  await page.locator('[data-port="1"]').click();assert.equal((await ctx()).value,0);await page.locator('#day').click();await page.locator('#brightness').click();await page.keyboard.press('ArrowRight');assert.equal((await ctx()).value,50);await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowRight');assert.equal((await ctx()).scope,'current');await page.keyboard.press('Enter');assert.equal((await ctx()).scope,'all');await page.keyboard.press('Escape');
+  checks.push('Shared Bright/Dim and 0/50 bounds; scope only changes on explicit Select');
+  await page.evaluate(()=>previewPictureContext.set({value:17}));assert.equal((await ctx()).profile,null);assert.equal((await ctx()).levels.selected,null);await page.locator('[data-port="2"]').click();assert.equal((await ctx()).value,0);assert.equal((await ctx()).profile,null);
+  checks.push('External brightness change releases follow choice; no automatic Bright/Dim guessing');
+  await page.locator('#day').click();await page.evaluate(()=>previewPictureContext.set({source:1}));assert.equal((await ctx()).value,17);await page.locator('[data-port="1"]').click();assert.equal((await ctx()).value,17);
+  checks.push('External switching and current-input card do not write brightness');
+  await page.locator('#night').click();await page.locator('#brightness').click();await page.evaluate(()=>previewPictureContext.set({source:2}));assert.equal(await page.locator('#brightness-panel').isVisible(),false);
+  await page.evaluate(()=>{previewInputs.update(2,{awake:false});previewInputs.update(4,{label:''});});assert.equal(await page.locator('#brightness').getAttribute('aria-disabled'),'true');assert.equal(await page.locator('[data-port="4"] .source-label').textContent(),'HDMI 4');
+  await page.locator('[data-port="4"]').focus();await page.evaluate(()=>previewInputs.update(4,{connected:false}));assert.equal(await page.locator('[data-port="4"]').isVisible(),false);assert.notEqual(await page.locator(':focus').getAttribute('data-port'),'4');
+  checks.push('Context changes close slider; sleeping input disables controls; unplugging repairs focus and never invents names');
+  await page.evaluate(()=>{previewInputs.update(2,{awake:true});previewInputs.update(4,{connected:true,label:'Nintendo Switch'});previewPictureContext.set({source:1});});await page.locator('#day').click();await page.locator('[data-port="1"]').focus();
+  await page.evaluate(()=>previewPictureContext.set({pending:true,value:0}));assert.equal(await page.locator('#brightness-current').textContent(),'…');assert.equal(await page.locator('#brightness').getAttribute('aria-disabled'),'true');assert.equal((await ctx()).levels.selected,'day');assert.equal((await ctx()).value,50);assert.equal((await ctx()).profile,null);
+  await page.evaluate(()=>previewPictureContext.set({pending:false,value:50}));assert.equal((await ctx()).profile,'day');checks.push('Pending native readings show no cached number, disable edits and retain explicit intent');
+  const dir=root+'/artifacts/preview-checks';fs.mkdirSync(dir,{recursive:true});await page.locator('#toast').evaluate(el=>el.hidden=true);await page.screenshot({path:dir+'/cove-home.png'});
+  await page.locator('#night').click();await page.locator('#brightness').click();await page.locator('#toast').evaluate(el=>el.hidden=true);await page.screenshot({path:dir+'/cove-night.png'});await page.keyboard.press('Escape');
+  await page.locator('[data-port="2"]').click();await page.locator('#brightness').click();await page.locator('#toast').evaluate(el=>el.hidden=true);await page.screenshot({path:dir+'/cove-game.png'});
+  await page.setViewportSize({width:1280,height:720});await page.emulateMedia({reducedMotion:'reduce'});await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const box=await page.locator('#brightness-panel').boundingBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=1280&&box.y+box.height<=720);checks.push('720p reduced-motion layout fits');
+  assert.deepEqual(errors,[]);assert.deepEqual(outside,[]);fs.writeFileSync(root+'/artifacts/preview-checks.json',JSON.stringify({passed:true,checks,errors,outside,tv_contacted:false},null,2));console.log(JSON.stringify({passed:true,checks}));
+ }finally{if(browser)await browser.close();server.kill();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -38,12 +38,13 @@ internal sealed partial class NeutralWindow {
   int acceptedPreview=Interlocked.Exchange(ref inputReturnPreview,0);
   int? observed=acceptedPreview is >=13 and <=16?acceptedPreview:state.Picture?.Source??state.CurrentSource;
   if(observed.HasValue)warmPreviewSource=observed;
+  var cached=sourceMonitor?.Latest;if(cached!=null){state=state with{Ports=cached.Video};currentInventory=cached;}
   int current=Array.FindIndex(state.Ports,p=>p.Source==warmPreviewSource);
   if(state.Ports.Length>0){focusRow=0;selected=previousInput=current>=0?current:0;}
   else{focusRow=1;selected=2;previousInput=0;}
   hasState=false;notification="";noticeUntil=0;CancelHeroFade();
   state=new(state.Ports.Select(p=>p with{CanSelect=false}).ToArray(),null,0,false,PicturePending:true,Generation:foreground.Lease.Generation);
-  Draw();
+  Draw();lastAppliedInventory=null;
  }
  void ResumeWork(bool explicitLaunch){
   if(stopping||!created)return;
@@ -57,7 +58,7 @@ internal sealed partial class NeutralWindow {
    settingsHandoff.Cancel();refreshed=0;picturePendingSince=0;
    // Show the existing artwork immediately, but do not offer stale picture
    // controls or claim a cached source is still current. Refresh asynchronously.
-   PrepareWarmScene();tick?.Start();QueueRefresh();
+   PrepareWarmScene();sourceMonitor?.Request();inventoryRequested=Now();tick?.Start();QueueRefresh();
    Bootstrap.Emit(new{@event="warm_resume",explicit_launch=explicitLaunch,polling_resumed=true});
   }
   // An explicit Home launch may target a window hidden by Back. A normal OS
@@ -132,7 +133,7 @@ internal sealed partial class NeutralWindow {
   if(!foreground.Active&&!settingsHandoff.IsBackground)Stop("background_memory_pressure");
  }
  protected override void OnTerminate(){
-  inputHandoff.Dispose();PauseWork();controls?.FlushProfiles();foreground.Dispose();if(!stopping){stopping=true;exitReason="system_termination";}
+  sourceMonitor?.Dispose();inputHandoff.Dispose();PauseWork();controls?.FlushProfiles();foreground.Dispose();if(!stopping){stopping=true;exitReason="system_termination";}
   tick?.Dispose();tick=null;homeActivation?.Dispose();homeActivation=null;try{FocusManager.Instance.ClearFocus();}catch{}
   backDispatch?.Dispose();backDispatch=null;
   focusDecoration?.Dispose();foreach(var view in views.AsEnumerable().Reverse())view.Dispose();views.Clear();

@@ -13,7 +13,10 @@ up to two additional 80 ms UI turns before resume acknowledgement. One
 lifetime-owned timer stops on acknowledgement, return or backgrounding; it is
 disposed at termination, not from its own callback.
 
-Ordinary hidden state stops polling and animation. A different Cove card may
+Ordinary hidden state stops periodic polling and animation. A native source-list
+notification can update the cached input/audio inventory while hidden, without
+reading picture settings or raising the window. Visible inventory refresh also
+runs at a 500 ms fallback interval. Requests coalesce into one reader. A different Cove card may
 finish one bounded brightness continuation after the native signal settles.
 It never raises the hidden window or keeps polling indefinitely.
 
