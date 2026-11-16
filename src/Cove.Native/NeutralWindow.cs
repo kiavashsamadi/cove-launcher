@@ -56,7 +56,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
   var group=Add(SurfaceBox(1414,78,274,68));group.BackgroundColor=new Color(1,1,1,.024f);group.CornerRadius=new Vector4(17,17,17,17);group.BorderlineWidth=1;group.BorderlineColor=new Color(1,1,1,.039f);group.AccessibilityHidden=true;
   for(int i=0;i<3;i++){
    int x=i==0?1419:i==1?1551:1708,y=i==2?78:83,w=i==2?68:132,h=i==2?68:58;
-   var tile=Add(SurfaceBox(x,y,w,h));tile.BackgroundColor=new Color(0,0,0,0);tile.CornerRadius=new Vector4(i==2?17:12,i==2?17:12,i==2?17:12,i==2?17:12);tile.Focusable=true;tile.AccessibilityRole=Role.PushButton;tile.AccessibilityHighlightable=true;tile.AccessibilityName=i==0?"Bright preset":i==1?"Dim preset":"TV settings";utilityCards.Add(tile);
+   var tile=Add(SurfaceBox(x,y,w,h));tile.BackgroundColor=i==2?new Color(1,1,1,.012f):new Color(0,0,0,0);tile.CornerRadius=new Vector4(i==2?17:12,i==2?17:12,i==2?17:12,i==2?17:12);tile.Focusable=true;tile.AccessibilityRole=Role.PushButton;tile.AccessibilityHighlightable=true;tile.AccessibilityName=i==0?"Bright preset":i==1?"Dim preset":"TV settings";utilityCards.Add(tile);
    var label=Add(Label(i==0?"Bright":i==1?"Dim":"",x+56,y,w-60,h,18));label.HorizontalAlignment=HorizontalAlignment.Begin;utilityNames.Add(label);
   }
   for(int i=0;i<2;i++){var icon=Add(new ImageView{Position2D=new Position2D(i==0?1442:1574,101),Size2D=new Size2D(22,22),AccessibilityHidden=true});Paint(icon,i==0?"cove-day":"cove-night");presetIcons.Add(icon);}
@@ -173,7 +173,7 @@ internal sealed partial class NeutralWindow:NUIApplication {
   string? appearance=Presentation.AppearanceOf(state.Picture);
   for(int i=0;i<3;i++){
    bool focused=focusRow==1&&selected==i;bool available=i==2||Presentation.PresetAvailable(state.Picture,i==0?Appearance.Day:Appearance.Night);bool active=i==0&&appearance=="day"||i==1&&appearance=="night";
-   utilityCards[i].BackgroundColor=active?new Color(.220f,.282f,.365f,.50f):new Color(0,0,0,0);utilityNames[i].TextColor=available?Paper():Muted();utilityNames[i].Opacity=available?1:.38f;
+   utilityCards[i].BackgroundColor=active?new Color(.220f,.282f,.365f,.50f):i==2?new Color(1,1,1,.012f):new Color(0,0,0,0);utilityNames[i].TextColor=available?Paper():Muted();utilityNames[i].Opacity=available?1:.38f;
    utilityCards[i].AccessibilityDescription=i==2?"Open Samsung picture and sound settings":available?(active?"Selected":"Select saved brightness level"):"Brightness is unavailable for the current picture";
    if(i<2)presetIcons[i].Opacity=available?1:.38f;utilityCards[i].BorderlineWidth=focused?2:i==2?1:0;utilityCards[i].BorderlineColor=focused?new Color(.765f,.824f,.886f,1):new Color(1,1,1,.043f);
   }

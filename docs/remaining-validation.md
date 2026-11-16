@@ -25,8 +25,9 @@ diagnostic traces are not distributed.
 ## Limits
 
 - Host and browser passes cannot establish physical picture/sound quality.
-- Physical HDMI cable removal/reconnection is simulated in host/browser tests;
-  native registration and source-selection checks do not substitute for it.
+- A native capture confirmed that an unplugged HDMI port was absent, with other
+  inputs still usable. Cable reconnection and event timing while open or hidden
+  remain covered by simulation rather than physical validation.
 - A bounded native check is not proof against every remote/CEC timing race.
 - Full All sources propagation and every SDR/HDR transition are not qualified.
 - Shared profile persistence across a full restart, accessibility speech,

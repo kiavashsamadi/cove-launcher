@@ -7,9 +7,10 @@ or physical picture and sound.
 
 ## On the TV
 
-![Cove on the TV with Apple TV current and Bright/Dim controls](images/cove-native-tv.png)
+![Cove on the TV with detected audio, shaded Settings and Brightness controls, and Bright/Dim profiles](images/cove-native-tv.png)
 
 Actual TV font, input inventory and installed renderer. No media content is captured.
+The sample connections in the previews below can differ from the TV capture.
 
 ## Browser previews
 

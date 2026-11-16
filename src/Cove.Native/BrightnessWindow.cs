@@ -13,7 +13,7 @@ internal sealed partial class NeutralWindow {
  int[] UtilityOrder=>AudioVisible?new[]{4,3,0,1,2}:new[]{3,0,1,2};
  int MoveUtility(int direction){var order=UtilityOrder;int i=Array.IndexOf(order,selected);return order[Math.Clamp(i+direction,0,order.Length-1)];}
  void CreateBrightness(){
-  var button=Add(SurfaceBox(1168,78,226,68));button.BackgroundColor=new Color(0,0,0,0);button.Focusable=true;button.AccessibilityRole=Role.PushButton;button.AccessibilityHighlightable=true;button.AccessibilityName="Display brightness";utilityCards.Add(button);
+  var button=Add(SurfaceBox(1168,78,226,68));button.BackgroundColor=new Color(1,1,1,.012f);button.Focusable=true;button.AccessibilityRole=Role.PushButton;button.AccessibilityHighlightable=true;button.AccessibilityName="Display brightness";utilityCards.Add(button);
   brightnessButtonLabel=Add(Label("Brightness",1180,78,202,68,18));utilityNames.Add(brightnessButtonLabel);
   var panel=Add(SurfaceBox(1168,168,608,212));panel.BackgroundColor=new Color(.067f,.090f,.129f,1);panel.BorderlineWidth=1;panel.BorderlineColor=new Color(.30f,.39f,.50f,.65f);panel.AccessibilityHidden=true;brightnessPanel.Add(panel);
   brightnessTitle=Add(Label("Brightness",1200,190,370,44,26));brightnessTitle.HorizontalAlignment=HorizontalAlignment.Begin;brightnessPanel.Add(brightnessTitle);

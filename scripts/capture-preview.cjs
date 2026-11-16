@@ -12,7 +12,11 @@ const root=path.resolve(__dirname,'..');
   const page=await browser.newPage({viewport:{width:1920,height:1080},reducedMotion:'reduce'}),errors=[];
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8775/'))errors.push('Unexpected external request');});
   const fresh=async()=>{await page.goto('http://127.0.0.1:8775/');await page.locator('.source').first().waitFor();};
-  const save=async name=>{await page.locator('#toast').evaluate(el=>el.hidden=true);await page.screenshot({path:path.join(root,'docs','images',name+'.png')});};
+  const save=async name=>{
+   await page.locator('#toast').evaluate(el=>el.hidden=true);
+   await page.evaluate(async()=>{await document.fonts.ready;await Promise.all([...document.images].map(image=>image.decode()));});
+   await page.screenshot({path:path.join(root,'docs','images',name+'.png'),animations:'disabled'});
+  };
   await fresh();await page.locator('#day').click();await page.locator('[data-port="1"]').focus();await save('cove-launcher');
   await page.locator('#audio-output').focus();await save('cove-audio');
   for(const [port,name,label] of [[2,'cove-playstation5','PlayStation 5'],[4,'cove-switch','Nintendo Switch'],[4,'cove-hdmi','']]){
