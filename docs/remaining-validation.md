@@ -38,10 +38,10 @@ confirmed separately after that restart.
 - Shared profile persistence across a full restart, accessibility speech,
   full AC removal, future firmware and long-run memory need separate coverage.
 - Complete telemetry prevention and numerical speed improvements are not claimed.
-- Isolated DNS responses passed. The parent-death-signal design failed automatic
-  cleanup, while the separate manager-owned design passed its ten lifecycle
-  cases. Group minimization, real routing recovery and persistent deployment
-  remain unqualified. No network policy remains installed; see
+- Restricted-worker lifecycle, isolated native DNS routing/inverse and two
+  independent deadline-recovery tests passed. Durable recovery after complete
+  controller loss, live-network compatibility and persistent
+  deployment still need qualification. No live network policy changed; see
   [the recovery evidence and limits](dns-recovery.md).
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher

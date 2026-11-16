@@ -55,10 +55,10 @@ For isolated DNS response and recovery receipts, use
 from successful automatic cleanup. Valid evidence is not deployment approval;
 raw receipts, operational payloads and firmware binaries stay outside Git.
 
-The [stronger recovery design](dns-recovery.md) adds a separate manager-receipt
-checker and an in-memory transaction model. They distinguish native lifecycle
-passes from unresolved worker privileges and untested real routing recovery.
-Neither tool performs or authorizes deployment.
+The [stronger recovery design](dns-recovery.md) adds [a confinement/inverse receipt checker](../scripts/verify_dns_confinement.py),
+manager evidence checks and an in-memory transaction model. They distinguish
+restricted-worker, isolated native routing and independent deadline-recovery passes from still-unqualified
+live-network deployment. None performs or authorizes deployment.
 
 `socket_metadata.py` validates two fixed selected-process socket samples and
 decodes full IPv4/IPv6 endpoints from little-endian Linux proc records. It rejects

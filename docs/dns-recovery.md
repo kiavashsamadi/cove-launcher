@@ -1,106 +1,73 @@
 # Isolated DNS recovery
 
-A transient service managed by the TV's existing system manager passed the
-isolated lifecycle tests below. This is stronger evidence than a supervisor's
-own timeout: the manager removed the trial resolver even after its launch client
-was killed or the resolver was frozen. **A permanent on-TV resolver is still
-unqualified.** Privilege minimization and recovery of real DNS routing remain
-separate requirements.
+The restricted resolver, native routing inverse and independent deadline recovery have passed isolated TV tests. **Permanent DNS filtering remains unqualified.** Tests use synthetic DNS answers, and routing mutations occur only inside a separately verified, loopback-only network namespace. The TV's live DNS and firewall are unchanged.
 
-## Native evidence
+## Worker permissions
 
-The tested manager reports systemd 244. Each trial used a unique transient
-service with an independent three-second runtime limit, bounded startup/stop,
-control-group termination, no restart and collection after success or failure.
-No unit was enabled for boot. Native properties, process identities, control
-groups and loopback sockets were checked before injecting a fault. The design
-uses the documented [service lifetime](https://github.com/systemd/systemd/blob/v244/man/systemd.service.xml),
-[group termination](https://github.com/systemd/systemd/blob/v244/man/systemd.kill.xml)
-and [transient service](https://github.com/systemd/systemd/blob/v244/man/systemd-run.xml)
-mechanisms; the device tests establish which behaviors worked on this firmware.
+Use dnsmasq's normal foreground mode, `--keep-in-foreground`, with its native user/group drop. Its debug mode, `--no-daemon`, skips that drop. This distinction is documented in the [dnsmasq manual](https://thekelleys.org.uk/dnsmasq/docs/dnsmasq-man.html) and was verified against the stock binary's actual process credentials.
 
-| Isolated case | Observed result |
+The tested worker has an unprivileged identity, no supplementary groups, no-new-privileges, and empty permitted, effective, inheritable and ambient capability sets. The bounding set retains SETUID/SETGID for startup; **it is not empty and is not an active grant**. The original synthetic port-53 resolver also needs NET_BIND_SERVICE during startup. Neither worker retains active capabilities after its native drop. No signatures, file capabilities or platform security policies are changed.
+
+The existing systemd 244 manager enforces a three-second lifetime, bounded startup/stop, full control-group termination, no restart and collection after failure. The strict worker batch also verifies ProtectSystem=strict, ProtectHome, private devices, kernel/control-group protections and restrictive umask. Read-only root and selected system mounts are checked in the worker's actual mount table. No syscall-filter claim is made: this manager build lacks seccomp support. See the version-matched [execution controls](https://github.com/systemd/systemd/blob/v244/man/systemd.exec.xml) and [service lifetime](https://github.com/systemd/systemd/blob/v244/man/systemd.service.xml).
+
+| Restricted-worker case | Native result |
 | --- | --- |
-| Manager deadline | Resolver removed without a controller stop |
-| Frozen resolver | Manager removed the stopped process at its deadline |
-| Launch-client loss | Resolver survived loss of the waiting launch client, then expired independently |
-| Parent exits through a normal-exit handler | Manager removed the remaining resolver child before the runtime limit |
-| Parent killed | Remaining resolver child removed before the runtime limit |
-| Resolver killed | Process, service, group and listeners removed |
-| Fresh launch after crash | DNS responses succeeded; scoped stop succeeded |
-| Invalid resolver option | Startup refused; no service or listener remained |
-| Explicit inverse | Only the verified owned service stopped; resources released |
-| Functional DNS run | Synthetic response and upstream-outage/recovery checks passed; scoped stop succeeded |
+| Manager deadline | Worker and resources removed without controller fallback |
+| Frozen worker | Removed at the manager's deadline |
+| Waiting launch client killed | Worker survived the client, then expired independently |
+| Resolver killed | Service, group and listeners removed |
+| Fresh launch after crash | DNS replies and scoped shutdown passed |
+| Invalid configuration | Startup refused and resources collected |
+| Explicit scoped shutdown | Only the owned service stopped |
+| Functional queries | Filtering, forwarding and upstream outage/recovery passed |
 
-The second batch recorded 239 DNS response assertions, including readiness,
-exact/suffix/lookalike names, A/AAAA/TXT, IPv4/IPv6 loopback, UDP/TCP and restart.
-Denied queries did not reach the synthetic upstream. No external DNS queries
-were sent by the trial and no real TV traffic was redirected. Independent
-cleanup reads found no trial service, listener, control group or staged payload.
-Native DNS, firewall rules, system binaries and their capabilities were preserved.
+The first batch records readiness in each case; the second includes 237 detailed DNS assertions covering exact names, subdomains, lookalikes, case handling, A/AAAA/TXT, UDP/TCP and IPv4/IPv6 loopback. These are synthetic checks, not a capture or classification of all TV traffic. The launch-client test does not simulate a physical PC/network disconnection.
 
-The resolver ran with an unprivileged numeric identity, no-new-privileges and
-empty effective, permitted, inheritable, ambient and bounding capability sets.
-However, the firmware supplied additional supplementary groups. Empty and
-explicit service group settings did not minimize the observed group list.
-A restricted managed startup wrapper was refused before a resolver started;
-the precise refusal cause was not established. No executable-signature check,
-capability attribute or security policy was weakened to make it run.
+## Real routing inverse, isolated network
 
-The successful lifecycle matrix therefore records **supplementary-group
-minimization as false**. Its temporary workers were restricted to synthetic
-loopback queries and had no file-writing configuration. Those results do not
-approve those groups for an unattended service. The earlier parent-death-signal
-failure remains a failure of that separate design; it is not rewritten as a pass.
+A pinned namespace must differ from the diagnostic thread and PID 1, contain only loopback and have no default route. Every native firewall command checks that identity again inside the target namespace. Queries run on a dedicated thread that must restore its original namespace. A deliberately wrong identity is refused before mutation. [Linux network namespaces](https://man7.org/linux/man-pages/man7/network_namespaces.7.html) separate the relevant interfaces, routes, firewall state and sockets.
 
-## Routing recovery design
+The test redirects IPv4 UDP/TCP port 53 to a restricted resolver. An owned cgroup exemption prevents the resolver's own upstream query from looping. IPv6 NAT is unavailable on the tested firmware, so the alternative explicitly rejects IPv6 port-53 DNS. It does **not** claim IPv6 redirection or successful native-application fallback. Here UDP rejection returns access-denied and TCP rejection returns connection-refused; queries succeed before and after the rule.
 
-Stopping a resolver is insufficient once clients depend on it. A later design
-needs a durable private baseline and recovery execution that survives loss of
-the launch client **and** the resolver. The candidate recovery sequence is:
+The supervised inverse passed 60 DNS assertions across direct-worker, baseline, partial activation, active filtering, restored DNS and fault-recovery phases. Native checks also passed:
 
-1. Verify the journal, transaction identity and exact owned rules against current state.
-2. Remove only owned interception rules for both address families.
-3. Restore the recorded native DNS state if it still matches this transaction's candidate.
-4. Verify that no owned route depends on the resolver, then stop it.
-5. Verify cleanup and retain the recovery record for an idempotent retry.
+- Empty/partly populated chain recovery and repeated inverse.
+- Preservation of an unrelated chain, including a similar name.
+- Refusal of an unexpected owned-chain rule without changing it.
+- Recovery after each of four inverse interruption points.
+- Exact original IPv4/IPv6 table listings and DNS replies after recovery.
 
-This is an availability-first return to the recorded network policy; filtering
-would cease during recovery. It must be an explicit deployment choice. A policy
-that instead blocks outbound access during failure requires a different,
-separately reviewed design. Never silently choose an external fallback resolver.
+Recovery deletes only exact owned hooks/rules and then empty owned chains. It never flushes a table or chain. Discarding a failed test namespace is cleanup, **not** a passing native inverse. The old DNS-setting transaction model remains available, but the preferred design leaves Samsung's DNS configuration intact: removing interception returns requests to its existing resolver policy without overwriting a later legitimate DNS change.
 
-[`simulate_dns_recovery.py`](../scripts/simulate_dns_recovery.py) models these
-operations in memory. Tests cover all ten modeled activation/recovery
-interruption points, repeated recovery, a dead worker, missing journals,
-conflicts before and between operations, and preservation of unrelated rules.
-On conflict the model refuses to overwrite another change or stop a resolver
-that may still be needed. A real implementation needs native atomic conditional
-writes or equivalent serialization; Python assignments do not establish that.
-Journal durability/authenticity and a separately supervised recovery executor
-are assumptions of the model, not completed native features.
+## Independent recovery and deployment gates
+
+A separate manager-owned inverse is armed before interception. Its three-second deadline runs a post-stop recovery command in the isolated namespace. The helper has only NET_ADMIN and NET_RAW capabilities, no-new-privileges and the same read-only system protections. The stock legacy firewall tool opens a raw control socket, which requires NET_RAW; see its [version-matched source](https://www.netfilter.org/projects/iptables/files/iptables-1.6.1.tar.bz2) and [raw-socket capability requirement](https://man7.org/linux/man-pages/man7/raw.7.html). The resolver itself retains no active capabilities.
+
+The inverse is supplied through the manager's standard-input data, avoiding access to staging files or extra filesystem capabilities. Recovery results use an owned, root-only runtime directory. The only additional writable path is the existing firewall lock file; its content must remain unchanged. Namespace and exact rule ownership checks run before mutation.
+
+An owned parent slice keeps the cgroup exemption valid until recovery completes. This matters on the tested legacy firewall: when a rule names a worker cgroup that has disappeared, even deleting another rule can fail because the whole table is revalidated. Only the candidate resolver and its recovery helper belong to this temporary slice. It is removed after its members have ended and its rules are gone.
+
+| Independent fault | Native result |
+| --- | --- |
+| Resolver killed after interception | Deadline inverse restored both table listings and original DNS responses |
+| Resolver frozen and waiting launch client killed | Deadline inverse restored DNS while the worker remained frozen |
+
+Each case passed 28 DNS assertions across baseline, interception and recovery, without the controller calling the inverse. The generated shell inverse also passed 29 local synthetic cases, including all ten command interruptions and retries, unknown/duplicate/foreign rules, namespace mismatch, unrelated-rule preservation, and failed or empty rule listings. A successful script exit alone is insufficient: stderr, exact table restoration and working DNS must also pass.
+
+These tests do not simulate loss of the whole controller, physical PC/network disconnection or power. The observer still verifies resource cleanup and removes the empty test slice and receipts. That cleanup dependency needs a separate design before unattended deployment.
+
+Production still needs authenticated root-owned recovery material, serialization against concurrent network changes, an explicit upstream and failure policy, native-function compatibility, and separately supervised standby/cold-boot/AC-loss tests. An availability-first inverse restores original DNS access and therefore stops filtering. A privacy-first outage policy is a different choice. Do not silently select an external fallback resolver.
+
+Encrypted DNS, hard-coded addresses, alternate DNS ports and unknown telemetry endpoints remain outside this port-53 trial. A working DNS filter is not proof that every tracking path is blocked. A reliable external LAN resolver or suitable router remains an alternative.
+
+## Offline evidence checks
 
 ```text
+python scripts/verify_dns_confinement.py --deadline /absolute/private/deadline-result.json --recovery /absolute/private/recovery-result.json --routing /absolute/private/routing-result.json
+python scripts/verify_dns_confinement.py --deadline /absolute/private/deadline-result.json --recovery /absolute/private/recovery-result.json --independent-crash /absolute/private/crash-result.json --independent-frozen-client /absolute/private/frozen-client-result.json
 python scripts/simulate_dns_recovery.py
-python scripts/verify_dns_manager.py --deadline /absolute/private/deadline-result.json --recovery /absolute/private/recovery-result.json
 ```
 
-These tools do not contact a TV. The receipt checker requires all ten cases,
-exact response coverage, manager controls and independent cleanup evidence. It
-prints aggregate results only and keeps production/routing qualification false.
-It checks consistency, not receipt authenticity, freshness or arbitrary logs.
-Keep native payloads and raw receipts private.
+These tools never contact a TV. The checker requires complete native/controller outcomes, exact case/query coverage, effective worker restrictions, owned process identities, network preservation and cleanup. It prints aggregates only and keeps production qualification false. It checks consistency, not authenticity, freshness or arbitrary logs. Operational payloads, raw receipts and firmware binaries stay private.
 
-## Remaining qualification
-
-- Establish a supported, sufficiently restricted worker identity without weakening platform security.
-- Implement and test the independent recovery executor and its durable journal.
-- Qualify actual DNS-setting and owned-rule inverses, both address families and concurrent native changes.
-- Choose the failure policy and real upstream explicitly; test local control and required native functions.
-- Test standby, cold boot, full power loss and interruption of real control connectivity separately.
-
-The launch-client test did not disconnect the PC or network, and no reboot was
-part of this trial. The manager itself was never stopped. Passing process
-containment does not establish recovery from manager/kernel failure or power
-loss. A reliable external LAN resolver remains an alternative; neither approach
-alone proves that every telemetry path is blocked.
+The earlier [manager checker](../scripts/verify_dns_manager.py) retains the original debug-mode matrix's explicit group limitation. The earlier [trial checker](../scripts/verify_dns_trial.py) retains its parent-death-signal failure and signature-admission refusal. Those separate failures are not rewritten as passes by the stronger design.

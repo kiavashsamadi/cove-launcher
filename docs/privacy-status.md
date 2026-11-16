@@ -71,18 +71,16 @@ A wireless MAC filter usually controls association and can remove local access;
 it is not equivalent to a TV-only Internet block. A DNS list alone cannot cover
 hard-coded addresses or alternate resolvers.
 
-Further read-only checks found IPv6 DNS activity as well as IPv4 connections, so
-an IPv4-only policy would leave an observed path uncovered. An isolated
-ACR/advertising trial passed 233 synthetic DNS response checks across IPv4/IPv6
-loopback and UDP/TCP, plus supervised outage/restart/deadline checks. Automatic
-supervisor-loss cleanup failed in the parent-death-signal design; a temporary
-copy alternative was refused by signature enforcement. A separate manager-owned
-design passed ten isolated lifecycle cases and 239 response assertions. Its
-supplementary-group minimization and recovery of real routing remain unqualified.
-All trial processes and files were removed, with native DNS and firewall rules
-preserved. No real client traffic was redirected, and an unattended on-TV
-resolver remains unqualified.
-See the [network review workflow and recovery limits](network-review.md).
+Read-only checks found IPv6 DNS activity as well as IPv4 connections. The
+restricted-worker design passed eight isolated lifecycle/failure cases and 237
+detailed DNS assertions plus readiness checks. A separate private-network trial passed 60 native routing and
+rollback assertions, including partial activation, interruptions and conflicts.
+Independent deadline recovery then passed resolver-crash and frozen-worker/client-loss
+cases, with 28 DNS assertions each and no controller-issued inverse.
+Worker supplementary groups and active capabilities are empty after startup.
+Live TV DNS/firewall settings remain unchanged; no real client traffic was
+redirected. An unattended on-TV resolver remains unqualified. See the
+[recovery evidence and deployment gates](dns-recovery.md).
 
 App synchronization is another candidate because it participates in app
 restoration. Its native metadata and registry baseline were read successfully,

@@ -83,13 +83,17 @@ A byte-identical temporary copy without capability attributes was also refused
 by the TV's executable-signature enforcement. The original binary, its attributes
 and security policies were preserved; the copy and other trial files were removed.
 
-A separate [manager-owned recovery design](dns-recovery.md) passed ten isolated
-lifecycle cases, including frozen-worker and launch-client loss, plus 239 DNS
-response assertions. It avoids reliance on the earlier parent-death signal.
-Supplementary-group minimization remains unresolved, and restoration of real
-DNS routing is modeled rather than qualified on the TV. This qualifies isolated
-containment, **not an unattended on-TV resolver**. Keep a reliable external LAN
-resolver as an alternative. No trial resolver or filtering policy remains installed.
+The [restricted-worker and recovery design](dns-recovery.md) now verifies empty
+supplementary groups and active capabilities after the native privilege drop.
+Eight strict-worker cases and 237 detailed DNS assertions plus readiness checks passed. Native routing rollback
+also passed inside a separate private network, with 60 DNS assertions and
+interruption/conflict checks. Two independent deadline inverses passed after a
+resolver crash and after freezing the worker and killing its waiting launch
+client, with 28 DNS assertions each. The TV's live DNS and firewall remain unchanged.
+IPv6 NAT is unavailable; the isolated alternative rejects IPv6 port-53 DNS and
+still needs application compatibility testing. These results do not qualify an
+unattended deployment or prove complete telemetry prevention. No trial filtering
+policy remains installed.
 
 Private receipts can be assessed offline:
 
@@ -117,8 +121,9 @@ and exclude the resolver's own upstream traffic. Do not flush a firewall, set
 global policy, replace a shared resolver or silently fall back to an unfiltered
 provider. Clock synchronization and required local functions also need checks.
 
-Deployment, persistence and reversal are separate qualifications. Reversal must
-restore the recorded native DNS values and remove only owned redirection rules
-before terminating a resolver that existing clients still depend on. Verify both
+Deployment, persistence and reversal are separate qualifications. The preferred
+design leaves native DNS values unchanged and removes only owned interception
+rules before terminating a resolver that clients still depend on. Any separate
+DNS-setting change needs a guarded inverse that preserves later legitimate edits. Verify both
 address families and local control afterward. Retain a recovery path independent
 of the service being tested.
