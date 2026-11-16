@@ -1,6 +1,6 @@
 # Isolated DNS recovery
 
-The restricted resolver, native routing inverse and independent deadline recovery have passed isolated TV tests. **Permanent DNS filtering remains unqualified.** Tests use synthetic DNS answers, and routing mutations occur only inside a separately verified, loopback-only network namespace. The TV's live DNS and firewall are unchanged.
+The restricted resolver, native routing inverse and automatic recovery after loss of the rule-installing controller have passed isolated TV tests. Native DNS lookups and a temporary resolver using the TV's existing upstreams also passed a limited compatibility replay. **Permanent DNS filtering remains unqualified.** Routing mutations occur only inside a separately verified, loopback-only network namespace. The TV's live DNS and firewall are unchanged.
 
 ## Worker permissions
 
@@ -45,7 +45,7 @@ A separate manager-owned inverse is armed before interception. Its three-second 
 
 The inverse is supplied through the manager's standard-input data, avoiding access to staging files or extra filesystem capabilities. Recovery results use an owned, root-only runtime directory. The only additional writable path is the existing firewall lock file; its content must remain unchanged. Namespace and exact rule ownership checks run before mutation.
 
-An owned parent slice keeps the cgroup exemption valid until recovery completes. This matters on the tested legacy firewall: when a rule names a worker cgroup that has disappeared, even deleting another rule can fail because the whole table is revalidated. Only the candidate resolver and its recovery helper belong to this temporary slice. It is removed after its members have ended and its rules are gone.
+An owned parent slice keeps the cgroup exemption valid until recovery completes. This matters on the tested legacy firewall: when a rule names a worker cgroup that has disappeared, even deleting another rule can fail because the whole table is revalidated. The candidate resolver, recovery helpers and rule-installing controller belong to this temporary slice. It is removed after its members have ended and its rules are gone.
 
 | Independent fault | Native result |
 | --- | --- |
@@ -54,9 +54,25 @@ An owned parent slice keeps the cgroup exemption valid until recovery completes.
 
 Each case passed 28 DNS assertions across baseline, interception and recovery, without the controller calling the inverse. The generated shell inverse also passed 29 local synthetic cases, including all ten command interruptions and retries, unknown/duplicate/foreign rules, namespace mismatch, unrelated-rule preservation, and failed or empty rule listings. A successful script exit alone is insufficient: stderr, exact table restoration and working DNS must also pass.
 
-These tests do not simulate loss of the whole controller, physical PC/network disconnection or power. The observer still verifies resource cleanup and removes the empty test slice and receipts. That cleanup dependency needs a separate design before unattended deployment.
+The original cases above needed observer cleanup of the empty slice and receipt directory. A separate test now creates the slice with `StopWhenUnneeded=yes` and uses automatically removed runtime directories. The slice and service are submitted together through the manager's transient-unit API; no persistent unit file is created. See the version-matched [unit controls](https://github.com/systemd/systemd/blob/v244/man/systemd.unit.xml) and [transient-unit implementation](https://github.com/systemd/systemd/blob/v244/src/core/dbus-manager.c).
 
-Production still needs authenticated root-owned recovery material, serialization against concurrent network changes, an explicit upstream and failure policy, native-function compatibility, and separately supervised standby/cold-boot/AC-loss tests. An availability-first inverse restores original DNS access and therefore stops filtering. A privacy-first outage policy is a different choice. Do not silently select an external fallback resolver.
+The on-TV rule-installing controller is then killed after activation. It has no inverse trap. An enforced read-only observer watches the primary recovery deadline restore DNS, then a separately armed backup repeats the inverse. The case passed 36 DNS assertions, exact table restoration, both helper results and automatic native artifact cleanup. The primary and backup deadlines are three and five seconds; resolver workers have eight-second lifetimes. The result does not depend on the observer stopping services or deleting native receipt directories.
+
+This proves loss of the on-TV rule controller. It does **not** simulate termination of the entire diagnostic session, physical PC/network disconnection, manager/kernel failure or power loss. The diagnostic observer remains available to read evidence, and SDK upload cleanup still occurs afterward.
+
+A combined fault test then interrupted the primary inverse after its IPv6 work, leaving IPv4 filtering active in the isolated network. The independent backup finished recovery with 28 DNS assertions, both tables restored and automatic native cleanup. The primary failure is recorded explicitly; it is not relabeled as a successful primary inverse.
+
+## Existing connections and real DNS compatibility
+
+Restoring rules is not enough to claim seamless connection recovery. Two successive queries on the same TCP connection succeeded before the inverse, both against the original resolver and the active candidate. After recovery, an existing UDP socket reached the original resolver, but the held TCP connection was reset. New UDP/TCP queries succeeded. These results do not prove that every native DNS client retries correctly, or that connection tracking on the live network behaves identically.
+
+Netfilter applies a connection's NAT decision to subsequent packets; see the [NAT documentation](https://www.netfilter.org/documentation/HOWTO/NAT-HOWTO-5.html). DNS clients should retry unanswered queries after a TCP close, but that recommendation is not evidence of a particular application's behavior; see [RFC 7766, teardown](https://www.rfc-editor.org/rfc/rfc7766.html#section-6.2.4). No global connection-state flush, timeout change or module loading was used. Ordinary-client interception is withheld until reconnect or drain behavior is qualified.
+
+Two bounded receive-only samples, lasting four and six seconds, observed real requests from the native resolver lookup probe and their replies. Both samples contained two IPv4 queries and two replies, with **zero background-app queries observed**. Each replayed A and AAAA queries over UDP and TCP through the restricted temporary resolver using the existing configured upstreams. All four replay checks and eight separate blocking checks passed in each run; native lookups before and after also succeeded.
+
+This is native resolver traffic, not simulated upstream data, but it is a narrow probe. It does not establish background-app compatibility, IPv6 upstream use, native IPv6 rejection fallback, connection-state recovery or compatibility with all native functions. No ordinary client was redirected. Packet contents and query names were not retained in the report; private per-name hashes are not published. No new upstream provider was selected.
+
+Production still needs complete diagnostic-session-loss qualification, existing-flow recovery, authenticated root-owned recovery material, serialization against concurrent network changes, an explicit upstream and failure policy, native-function compatibility, and separately supervised standby/cold-boot/AC-loss tests. An availability-first inverse restores original DNS access and therefore stops filtering. A privacy-first outage policy is a different choice. Do not silently select an external fallback resolver.
 
 Encrypted DNS, hard-coded addresses, alternate DNS ports and unknown telemetry endpoints remain outside this port-53 trial. A working DNS filter is not proof that every tracking path is blocked. A reliable external LAN resolver or suitable router remains an alternative.
 
@@ -65,6 +81,7 @@ Encrypted DNS, hard-coded addresses, alternate DNS ports and unknown telemetry e
 ```text
 python scripts/verify_dns_confinement.py --deadline /absolute/private/deadline-result.json --recovery /absolute/private/recovery-result.json --routing /absolute/private/routing-result.json
 python scripts/verify_dns_confinement.py --deadline /absolute/private/deadline-result.json --recovery /absolute/private/recovery-result.json --independent-crash /absolute/private/crash-result.json --independent-frozen-client /absolute/private/frozen-client-result.json
+python scripts/verify_dns_controller_loss.py --controller /absolute/private/controller-result.json --partial-primary /absolute/private/partial-result.json --flows /absolute/private/flow-result.json --compatibility /absolute/private/replay-result.json --compatibility-version 2
 python scripts/simulate_dns_recovery.py
 ```
 

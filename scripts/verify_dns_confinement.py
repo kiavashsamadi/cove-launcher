@@ -19,7 +19,7 @@ COMMON_FALSE = ("settings_written", "external_dns_sent", "installed", "startup_c
                 "existing_services_changed", "production_dns_qualified")
 
 
-def envelope(receipt, scope, *, runtime=False):
+def envelope(receipt, scope, *, runtime=False, external_dns=False):
     require(isinstance(receipt, dict), "Receipt object required")
     require(receipt.get("status") == "success" and receipt.get("errors") == []
             and receipt.get("root_proven") is True and receipt.get("preflight_verified") is True,
@@ -38,7 +38,8 @@ def envelope(receipt, scope, *, runtime=False):
     r = receipt.get("preflight_report", {})
     require(isinstance(r, dict) and r.get("scope") == scope and r.get("completed") is True
             and all(type(r.get(k)) is int and r[k] == 0 for k in ("uid", "euid")), "Scope differs")
-    require(all(r.get(k) is False for k in COMMON_FALSE), "Deployment boundary differs")
+    require(all(r.get(k) is False for k in COMMON_FALSE if k != "external_dns_sent")
+            and r.get("external_dns_sent") is external_dns, "Deployment boundary differs")
     before = r.get("network_fingerprints_before", {})
     require(isinstance(before, dict) and set(before) == NETWORK
             and all(isinstance(v, str) and re.fullmatch("[0-9a-f]{64}", v) for v in before.values())

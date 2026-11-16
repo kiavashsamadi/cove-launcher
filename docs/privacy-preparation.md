@@ -58,7 +58,10 @@ raw receipts, operational payloads and firmware binaries stay outside Git.
 The [stronger recovery design](dns-recovery.md) adds [a confinement/inverse receipt checker](../scripts/verify_dns_confinement.py),
 manager evidence checks and an in-memory transaction model. They distinguish
 restricted-worker, isolated native routing and independent deadline-recovery passes from still-unqualified
-live-network deployment. None performs or authorizes deployment.
+live-network deployment. The [controller-loss/replay checker](../scripts/verify_dns_controller_loss.py)
+also checks automatic cleanup, backup deadlines, retained-connection limits and
+probe-versus-background traffic accounting. It never promotes a narrow replay
+to all-app compatibility. None performs or authorizes deployment.
 
 `socket_metadata.py` validates two fixed selected-process socket samples and
 decodes full IPv4/IPv6 endpoints from little-endian Linux proc records. It rejects

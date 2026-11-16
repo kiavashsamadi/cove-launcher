@@ -91,9 +91,13 @@ interruption/conflict checks. Two independent deadline inverses passed after a
 resolver crash and after freezing the worker and killing its waiting launch
 client, with 28 DNS assertions each. The TV's live DNS and firewall remain unchanged.
 IPv6 NAT is unavailable; the isolated alternative rejects IPv6 port-53 DNS and
-still needs application compatibility testing. These results do not qualify an
-unattended deployment or prove complete telemetry prevention. No trial filtering
-policy remains installed.
+still needs application compatibility testing. A further rule-controller crash test passed automatic native artifact cleanup
+and a second independent inverse. Two native lookup/replay trials passed using
+existing upstreams, but neither sample contained background-app queries. A held
+TCP DNS connection reset after rollback even though new queries worked; native
+client retry remains unqualified. These limits are recorded in the
+[recovery review](dns-recovery.md). No trial filtering policy remains installed,
+and these results do not establish complete telemetry prevention.
 
 Private receipts can be assessed offline:
 

@@ -77,6 +77,10 @@ detailed DNS assertions plus readiness checks. A separate private-network trial 
 rollback assertions, including partial activation, interruptions and conflicts.
 Independent deadline recovery then passed resolver-crash and frozen-worker/client-loss
 cases, with 28 DNS assertions each and no controller-issued inverse.
+A rule-controller crash also passed automatic native cleanup and a backup inverse.
+Real native lookup/replay checks passed with existing upstreams; the bounded
+samples observed no background-app queries. A retained TCP DNS connection reset
+after recovery, so native client retry and live interception remain unqualified.
 Worker supplementary groups and active capabilities are empty after startup.
 Live TV DNS/firewall settings remain unchanged; no real client traffic was
 redirected. An unattended on-TV resolver remains unqualified. See the
