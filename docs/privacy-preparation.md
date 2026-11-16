@@ -20,6 +20,13 @@ to disable. Generated drafts are alternatives, not a batch to apply together.
 Missing apps, shared protected packages, unexpected encodings, triggers and
 state drift require review.
 
+For a package catalog comparison, `compare_package_inventory.py` accepts private
+JSON containing `catalog` (package IDs), `packages` (rows with `package`) and
+`apps` (rows with `app_id`, `package` and native text `disable` values). It reports
+absent packages, missing app rows and mixed sibling flags separately. Similar
+display names are never used to infer identity. This is a global-registry
+comparison, not a runtime or per-user verification; keep its inputs private.
+
 `audit_privacy_drafts.py` tests isolation, inverse operations and failure cases on
 disposable copies. Passing these tests proves neither native service behavior nor
 network privacy. `verify_review_packet.py` checks private archive paths, sizes and

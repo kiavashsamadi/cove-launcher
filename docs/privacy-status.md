@@ -27,6 +27,14 @@ repository's review tools do not install this configuration. Preserve Settings,
 Device Care, the Cove carrier, display/panel care, HDMI/CEC/eARC, audio, networking,
 Bluetooth, accessibility and security components.
 
+The disabled native ad player (`com.samsung.tv.adplayer`) is separate from the
+web application `adplatform.ADPlayer` in package `adplatform`. The latter is not
+included in the nine disables and remained enabled in the inspected global
+registry. Its effective launch paths and shared consumers are unresolved.
+The offline [package inventory comparison](../scripts/compare_package_inventory.py)
+keeps package IDs, application IDs and sibling flags separate; recorded flags
+alone do not establish runtime blocking or qualify another removal.
+
 ## Automatic-update policies
 
 Four native settings were separately tested: the two firmware auto-update
