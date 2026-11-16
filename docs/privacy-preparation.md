@@ -49,6 +49,12 @@ and incomplete reads. It does not establish receipt freshness, restart
 persistence or protection against every update path. Keep raw receipts private;
 the command prints only its bounded assessment.
 
+For isolated DNS response and recovery receipts, use
+[`verify_dns_trial.py`](../scripts/verify_dns_trial.py) as described in the
+[network review](network-review.md). It distinguishes a safely recovered failure
+from successful automatic cleanup. Valid evidence is not deployment approval;
+raw receipts, operational payloads and firmware binaries stay outside Git.
+
 `socket_metadata.py` validates two fixed selected-process socket samples and
 decodes full IPv4/IPv6 endpoints from little-endian Linux proc records. It rejects
 truncated addresses, missing protocol coverage, unknown owners, changed process

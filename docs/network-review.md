@@ -66,6 +66,41 @@ does not prove response behavior. See the [dnsmasq manual](https://thekelleys.or
 
 ## Runtime trial and recovery
 
+An isolated on-device trial passed 233 response checks using synthetic upstream
+answers: exact names, subdomains, lookalikes, case handling, A/AAAA/TXT, UDP/TCP
+and IPv4/IPv6 loopback. Upstream outage/recovery, resolver termination/restart
+and the supervised worker deadline passed. The worker ran without effective,
+permitted, inherited or ambient capabilities. Native DNS settings and both
+firewall rule sets stayed unchanged; no real client traffic was redirected.
+
+**Automatic supervisor-loss recovery did not pass.** The worker outlived its
+supervisor, and a separate diagnostic guard had to terminate the exact owned
+process. Linux clears the parent-death signal when executing a file with
+capabilities; configuring that signal before execution is therefore insufficient
+for the tested stock executable. See the
+[Linux parent-death signal documentation](https://man7.org/linux/man-pages/man2/PR_SET_PDEATHSIG.2const.html).
+A byte-identical temporary copy without capability attributes was also refused
+by the TV's executable-signature enforcement. The original binary, its attributes
+and security policies were preserved; the copy and other trial files were removed.
+
+This qualifies isolated DNS responses, **not an unattended on-TV resolver**.
+Keep a reliable external LAN resolver as an alternative. An on-TV design needs
+independent cleanup that survives supervisor loss without weakening security,
+followed by separate routing, compatibility and startup qualification. No trial
+resolver or filtering policy remains installed.
+
+Private receipts can be assessed offline:
+
+```text
+python scripts/verify_dns_trial.py --functional /absolute/private/response-result.json --recovery /absolute/private/recovery-result.json --copy-attempt /absolute/private/copy-result.json
+```
+
+The copy-attempt argument is optional. A zero exit status means the records are
+internally consistent, including a recognized, safely recovered failure; read
+`automatic_parent_loss_recovery_passed` separately. The checker never reports
+production DNS qualification or complete tracking prevention. It does not prove
+receipt authenticity or freshness, and prints no private paths or raw records.
+
 Before changing any resolver setting, test the isolated resolver with synthetic
 upstream responses. Cover exact blocked names and subdomains, permitted names,
 similar-looking suffixes, A/AAAA/other query types, UDP/TCP, upstream timeout,

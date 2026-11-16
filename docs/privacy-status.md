@@ -72,11 +72,14 @@ it is not equivalent to a TV-only Internet block. A DNS list alone cannot cover
 hard-coded addresses or alternate resolvers.
 
 Further read-only checks found IPv6 DNS activity as well as IPv4 connections, so
-an IPv4-only policy would leave an observed path uncovered. A proposed isolated
-ACR/advertising configuration passed the installed resolver's syntax check;
-no resolver was started and no filtering was installed. Runtime behavior,
-compatibility and recovery remain separate tests. The
-[network review workflow](network-review.md) prepares those trials offline.
+an IPv4-only policy would leave an observed path uncovered. An isolated
+ACR/advertising trial passed 233 synthetic DNS response checks across IPv4/IPv6
+loopback and UDP/TCP, plus supervised outage/restart/deadline checks. Automatic
+supervisor-loss cleanup failed and required the diagnostic guard; a temporary
+copy alternative was refused by signature enforcement. All trial processes and
+files were removed, with native DNS and firewall rules preserved. No real client
+traffic was redirected, and an unattended on-TV resolver remains unqualified.
+See the [network review workflow and recovery limits](network-review.md).
 
 App synchronization is another candidate because it participates in app
 restoration. Its native metadata and registry baseline were read successfully,

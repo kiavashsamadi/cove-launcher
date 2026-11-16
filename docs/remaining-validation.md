@@ -38,6 +38,9 @@ confirmed separately after that restart.
 - Shared profile persistence across a full restart, accessibility speech,
   full AC removal, future firmware and long-run memory need separate coverage.
 - Complete telemetry prevention and numerical speed improvements are not claimed.
+- Isolated DNS responses and supervised cleanup passed, but automatic cleanup
+  after supervisor loss did not. No network policy remains installed; see
+  [the trial outcome and deployment limits](network-review.md).
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher
 failed. Physical picture, sound and perceived motion require a separate
