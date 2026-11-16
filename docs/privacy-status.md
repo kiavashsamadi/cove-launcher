@@ -6,7 +6,8 @@ Cove alone does not disable them or prove that telemetry is absent.
 
 ## Qualified component controls
 
-A tested configuration uses nine native global app-registration disables:
+A tested configuration uses these nine cold-boot-verified global
+app-registration disables:
 
 | Component group | Count |
 | --- | ---: |
@@ -27,10 +28,22 @@ repository's review tools do not install this configuration. Preserve Settings,
 Device Care, the Cove carrier, display/panel care, HDMI/CEC/eARC, audio, networking,
 Bluetooth, accessibility and security components.
 
-The disabled native ad player (`com.samsung.tv.adplayer`) is separate from the
-web application `adplatform.ADPlayer` in package `adplatform`. The latter is not
-included in the nine disables and remained enabled in the inspected global
-registry. Its effective launch paths and shared consumers are unresolved.
+The native ad player (`com.samsung.tv.adplayer`) is separate from the web
+application `adplatform.ADPlayer` in package `adplatform`. The web player's
+global registration flag is now disabled as a separate tenth control. Its
+native disable/enable round trip and recovery after a controlled post-disable
+validation failure passed before deployment. Both tests restored the original
+flag and preserved the full global, owner, web-app and picture tables.
+
+Deployment received the matching successful native completion callback and a
+disabled readback. Fresh full-database comparisons found exactly that one
+global flag change: all other registry rows, all six picture tables and the
+launcher, update, network and identity checks were preserved.
+The package and its data remain installed, with a scoped
+native enable inverse retained. Restart persistence, all possible activation
+paths and a reduction in transmitted data are not established for this new
+control. It does not disable the shared advertising framework.
+
 The offline [package inventory comparison](../scripts/compare_package_inventory.py)
 keeps package IDs, application IDs and sibling flags separate; recorded flags
 alone do not establish runtime blocking or qualify another removal.
@@ -72,6 +85,9 @@ audit. Complete telemetry prevention, decrypted traffic coverage and measured
 before/after transmission rates are not established.
 
 ## Network boundary
+
+DNS filtering has not been deployed. Its qualification is separate from the
+TV-side component controls above.
 
 Keeping local access while blocking TV Internet access requires a suitable
 network rule covering both IPv4 and IPv6 and verification of alternate routes.

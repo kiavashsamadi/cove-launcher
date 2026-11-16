@@ -69,6 +69,10 @@ This checks the exact nine global flags and underlying app rows, process samples
 four PISA/adagent activation units, marker identity, Home/startup preservation
 and diagnostic cleanup. Missing or contradictory evidence fails. It neither
 contacts the TV nor claims a fresh restart or complete telemetry prevention.
+The separate web advertising player is outside this checker's fixed nine-app
+scope; its native completion and full-registry preservation require their own
+exact-target evidence. Passing the original checker does not verify that
+additional control.
 
 For a separate read-only automatic-update policy receipt:
 

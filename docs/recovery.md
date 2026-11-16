@@ -40,6 +40,14 @@ Exact executors, original files and recovery receipts remain private and local.
 Do not restore a whole live database from an old snapshot, clear app data, bypass
 signature checks, flash firmware or modify partitions as a recovery shortcut.
 If a command times out, inspect its receipt and process state before retrying.
+Request acceptance or a terminated client does not prove that the native
+operation has finished. Require the matching terminal callback and natural
+successful exit before issuing an inverse; do not race a possible late write.
+The separate web advertising player's native disable/enable and controlled
+validation-failure recovery passed this check. Its inverse restores only its
+registration flag, with guards against changed package metadata and owner
+overrides. A later full-state comparison must allow only the reviewed field
+change; it must not excuse unrelated table changes.
 
 After recovery, verify Home, Settings, Back, normal HDMI picture/sound and saved
 presets. Remote recovery requires working local access; no zero-risk guarantee

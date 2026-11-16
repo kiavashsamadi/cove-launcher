@@ -27,6 +27,13 @@ Fresh reads also verified the existing component controls, routing, renderer
 and all six picture-setting tables. Physical navigation, picture and sound were
 confirmed separately after that restart.
 
+The separate web advertising player's native disable/enable round trip and
+controlled validation-failure recovery passed. Its subsequent single-flag
+deployment passed full global, owner, web-app and picture-table comparisons,
+with launcher routing, update controls, networking and diagnostic cleanup
+preserved. This additional flag still needs its own restart and physical
+functionality check; the earlier nine-app restart result does not cover it.
+
 ## Limits
 
 - Host and browser passes cannot establish physical picture/sound quality.
