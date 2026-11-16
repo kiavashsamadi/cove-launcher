@@ -90,7 +90,10 @@ settings remain unchanged; ordinary applications were not redirected.
 Client-scoped routing also passed isolated complete-controller-loss and
 interrupted-primary recovery, with an independent restricted witness and
 separate host-network readback. Nonmember DNS remained unaffected. This is a
-prerequisite for a future narrow live-network trial, not deployed protection.
+prerequisite for a separate live-network trial. That trial also verified
+owned-client recovery after complete controller loss and a partial primary
+inverse, with outside-group DNS unaffected and later DNS/firewall preservation
+confirmed. Ordinary apps were not redirected; no filtering remains installed.
 An unattended on-TV resolver remains unqualified. See the
 [recovery evidence and deployment gates](dns-recovery.md).
 

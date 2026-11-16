@@ -1,6 +1,6 @@
-# Isolated DNS recovery
+# DNS recovery
 
-The restricted resolver, native routing inverse and independent recovery after complete diagnostic-agent loss have passed isolated TV tests, including an interrupted primary inverse. Native TCP reconnection, IPv4/IPv6 lookup fallback and limited replay through existing upstreams also passed. **Permanent DNS filtering remains unqualified.** Routing mutations occur only inside a separately verified, loopback-only network namespace. The TV's live DNS and firewall are unchanged.
+The restricted resolver, native routing inverse and independent recovery after complete diagnostic-agent loss have passed isolated TV tests, including an interrupted primary inverse. A separate live-network trial now verifies that recovery for owned test clients only. Native TCP reconnection, IPv4/IPv6 lookup fallback and limited replay through existing upstreams also passed. **Permanent DNS filtering remains unqualified.** Temporary live-network rules were removed and independently checked; ordinary TV applications were not redirected and DNS settings were not changed.
 
 ## Worker permissions
 
@@ -109,6 +109,41 @@ test group. These results qualify scoped recovery only in the isolated network;
 live-host interception, ordinary-app compatibility and persistent deployment
 remain unqualified.
 
+## Owned test clients on the live network
+
+A separate trial uses the TV's existing upstreams and a loopback-only resolver.
+Only a newly created client group matches its temporary port-53 rules. The
+resolver and ordinary applications are outside that group; no existing process
+is moved. IPv4 DNS is redirected, while IPv6 DNS is explicitly rejected during
+the filtering phase. This is not IPv6 redirection.
+
+Eight baseline lookups and eight outside-group lookups pass. An independent
+restricted witness then records 24 DNS assertions across filtering, a partial
+primary inverse and complete backup recovery. It observes the diagnostic
+controller's death through a pinned process descriptor. Both recovery helpers
+were armed before activation. The primary deliberately stops after its IPv6
+work; the backup restores both families. A later independent read confirms the
+original DNS/firewall fingerprints and installed renderer.
+
+The helpers retain only NET_ADMIN/NET_RAW. The trusted preflight verifies its
+namespace against PID 1 and pins it; each helper checks its own namespace,
+boot identity and exact service group. Reading PID 1's namespace directly is
+unavailable to the restricted helper on this firmware. No tracing capability is
+added. See the kernel's [namespace access check](https://github.com/torvalds/linux/blob/v5.4/fs/proc/namespaces.c)
+and [namespace lifetime rules](https://man7.org/linux/man-pages/man7/namespaces.7.html).
+
+The exact scripts passed 57 local failure cases, including partial activation,
+interrupted inverse, foreign rules, wrong namespace/boot/group and unrelated
+rule preservation. Native evidence needed a separate reconciliation because
+the original parser rejected quotes around an unchanged firewall log prefix.
+That original receipt remains marked stopped. The stricter joined check
+requires its exact digest, independent cleanup, unchanged rules and complete
+witness evidence; the native fault test was not repeated or rewritten.
+
+This qualifies bounded recovery for owned test clients on the live network.
+Ordinary-app behavior, durable startup, manager/kernel failure and power loss
+remain outside the result. No filtering policy remains installed.
+
 ## Existing connections and real DNS compatibility
 
 Restoring rules is not enough to claim seamless connection recovery. Two successive queries on the same TCP connection succeeded before the inverse, both against the original resolver and the active candidate. After recovery, an existing UDP socket reached the original resolver, but the held TCP connection was reset. New UDP/TCP queries succeeded. These results do not prove that every native DNS client retries correctly, or that connection tracking on the live network behaves identically.
@@ -163,6 +198,7 @@ python scripts/verify_dns_nss.py /absolute/private/native-nss-result.json
 python scripts/verify_dns_native_live.py /absolute/private/native-live-result.json
 python scripts/verify_dns_session_loss.py --loss /absolute/private/loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
 python scripts/verify_dns_session_loss.py --owned-clients --loss /absolute/private/scoped-loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
+python scripts/verify_dns_session_loss.py --owned-host --loss /absolute/private/host-loss-result.json --reconciliation /absolute/private/cleanup-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
 python scripts/simulate_dns_recovery.py
 ```
 

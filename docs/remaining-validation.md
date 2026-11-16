@@ -43,8 +43,10 @@ confirmed separately after that restart.
   native cleanup. Native libc TCP reconnect and NSS IPv4/IPv6 fallback passed.
   An isolated client-cgroup variant also passed complete-controller-loss recovery
   while nonmember DNS remained unaffected.
+  A separate live-network owned-client trial verified the same combined fault,
+  with independent cleanup reconciliation and later host-state readback.
   A raw retained TCP connection still reset; limited replay observed no
-  background-app queries. Ordinary-app/live-network compatibility and persistent
+  background-app queries. Ordinary-app compatibility and persistent
   startup remain unqualified. See [DNS recovery](dns-recovery.md).
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher

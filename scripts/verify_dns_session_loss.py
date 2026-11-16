@@ -5,6 +5,8 @@ physical host loss, power-loss recovery, or production readiness.
 """
 import argparse
 from collections import Counter
+import copy
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -14,7 +16,7 @@ from verify_dns_manager import integer, load, NETWORK
 from verify_dns_trial import CLEANUP, require
 
 
-def outer(receipt):
+def outer(receipt, *, owned_host=False):
     require(isinstance(receipt, dict) and receipt.get("status") == "success" and receipt.get("errors") == []
             and receipt.get("root_proven") is True and receipt.get("preflight_verified") is True,
             "Incomplete session")
@@ -32,9 +34,11 @@ def outer(receipt):
     r = receipt.get("preflight_report")
     require(isinstance(r, dict) and all(type(r.get(k)) is int and r[k] == 0 for k in ("uid", "euid")),
             "Native report missing")
-    for k in ("settings_written", "host_firewall_changed", "external_dns_sent", "installed",
+    for k in ("settings_written", "installed",
               "startup_changed", "existing_services_changed", "production_dns_qualified"):
         require(r.get(k) is False, "Trial scope differs")
+    for k in ("host_firewall_changed", "external_dns_sent"):
+        require(r.get(k) is owned_host, "Host routing scope differs")
     before = r.get("network_fingerprints_before")
     require(isinstance(before, dict) and set(before) == NETWORK
             and all(isinstance(v, str) and re.fullmatch("[0-9a-f]{64}", v) for v in before.values()),
@@ -70,16 +74,33 @@ def witness_rows(text):
     return rows, len(gc) // 2
 
 
-def assess(loss, after, launcher_log, agent_status, *, owned_clients=False):
-    r, a = outer(loss), outer(after)
-    scope = "isolated-dns-owned-loss-v1" if owned_clients else "isolated-dns-sessionloss-v2"
+def assess(loss, after, launcher_log, agent_status, *, owned_clients=False, owned_host=False):
+    require(not (owned_clients and owned_host), "Choose one explicit trial scope")
+    r, a = outer(loss, owned_host=owned_host), outer(after)
+    scope = "owned-host-dns-v2" if owned_host else (
+        "isolated-dns-owned-loss-v1" if owned_clients else "isolated-dns-sessionloss-v2")
+    owned_clients = owned_clients or owned_host
     require(r.get("scope") == scope and r.get("completed") is False
             and r.get("known_children_ended") is False and loss.get("loss_armed") is True,
             "Expected pending loss receipt")
-    for k in ("loss_armed", "namespace_isolated", "worker_groups_empty", "worker_active_capabilities_empty",
-              "wrong_namespace_refused", "slice_auto_cleanup_verified", "host_network_unchanged_before_loss",
+    for k in ("loss_armed", "worker_groups_empty", "worker_active_capabilities_empty",
+              "slice_auto_cleanup_verified",
               "independent_helpers_armed_before_loss", "primary_inverse_interruption_expected"):
         require(r.get(k) is True, "Loss preparation incomplete")
+    for k in ("namespace_isolated", "host_network_unchanged_before_loss"):
+        require(r.get(k) is (not owned_host), "Namespace or active host scope differs")
+    if owned_host:
+        for k in ("isolated_guard_refused_host", "host_activation_attempted", "existing_rules_preserved_during_activation"):
+            require(r.get(k) is True, "Host activation proof missing")
+        require(r.get("ordinary_clients_redirected") is False, "Ordinary apps outside trial scope")
+        require(isinstance(r.get("host_boot_identity"), str)
+                and re.fullmatch(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", r["host_boot_identity"]),
+                "Boot identity missing")
+        digest = r.get("renderer_sha256")
+        require(isinstance(digest, str) and re.fullmatch("[0-9a-f]{64}", digest)
+                and digest == a.get("renderer_sha256"), "Installed renderer changed")
+    else:
+        require(r.get("wrong_namespace_refused") is True, "Isolated namespace guard missing")
     require(r.get("rules_discarded_with_namespace_after_failure") is False, "Namespace discard is not recovery")
     token, units, pids = ownership(r, ("candidate", "original", "rescue", "backup", "control", "witness"))
     if owned_clients:
@@ -146,7 +167,7 @@ def assess(loss, after, launcher_log, agent_status, *, owned_clients=False):
     backup = "table4_begin\n" + r["private_baseline4"] + "\ntable6_begin\n" + r["private_baseline6"] + "\ninverse_finished=0\ninverse_exit=0"
     actual = logs.get("rescue", "")
     require(isinstance(actual, str) and re.sub(r'"([A-Za-z0-9_./:-]+)"', r"\1", actual.strip()) == primary
-            and logs.get("backup", "").strip() == backup
+            and re.sub(r'"([A-Za-z0-9_./:-]+)"', r"\1", logs.get("backup", "").strip()) == backup
             and logs.get("rescue-error") == logs.get("backup-error") == "", "Independent inverse differs")
     require(logs.get("witness-error") in ("", "Failed open device: No such file or directory"), "Witness stderr differs")
     rows, gc_pairs = witness_rows(logs.get("witness"))
@@ -175,8 +196,50 @@ def assess(loss, after, launcher_log, agent_status, *, owned_clients=False):
                 witness_active_capabilities_empty=True, automatic_native_cleanup_passed=True,
                 host_network_preserved_across_loss=True, bounded_runtime_gc_pairs=gc_pairs,
                 owned_client_scope_verified=owned_clients,
+                owned_client_live_network_recovery_qualified=owned_host,
+                ordinary_tv_apps_qualified=False,
                 physical_pc_disconnect_tested=False, live_network_recovery_qualified=False,
                 production_dns_qualified=False)
+
+
+def assess_reconciled_host(loss, after, reconciliation, launcher_log, agent_status, source_sha256):
+    """Join a narrowly identified parser stop with separate native cleanup proof.
+
+    The original receipt is never rewritten. A checked in-memory projection lets
+    the common verifier evaluate the native phases against the same invariants.
+    This is evidence consistency checking, not cryptographic attestation.
+    """
+    require(isinstance(loss, dict) and loss.get("status") == "stopped"
+            and loss.get("errors") == [{"phase": "payload_cleanup", "type": "ValueError",
+                                        "message": "backup completion or tables"}]
+            and loss.get("root_proven") is True and loss.get("preflight_verified") is False
+            and loss.get("loss_armed") is True, "Unexpected original failure")
+    require(isinstance(source_sha256, str) and re.fullmatch("[0-9a-f]{64}", source_sha256)
+            and isinstance(reconciliation, dict) and reconciliation.get("source_sha256") == source_sha256,
+            "Original receipt digest differs")
+    expected = {"all_known_processes_absent", "expected_signal_and_private_mount_cleanup_proved",
+                "owned_units_slice_runtime_absent", "global_identity_preserved", "owned_stage_removed",
+                "owned_archives_removed", "new_helpers_gates_absent"}
+    cleanup = reconciliation.get("cleanup", {})
+    require(reconciliation.get("status") == "clean" and reconciliation.get("errors") == []
+            and reconciliation.get("root_launched") is False and reconciliation.get("settings_changed") is False
+            and isinstance(cleanup, dict) and set(cleanup) == expected
+            and all(v is True for v in cleanup.values()), "Separate reconciliation incomplete")
+    original_cleanup = {"transient_units_absent", "runtime_directory_absent", "recovery_slice_absent",
+                        "global_identity_files_unchanged", "sdk_helpers_and_gates_absent"}
+    require(set(loss.get("cleanup", {})) == original_cleanup
+            and all(v is True for v in loss["cleanup"].values()), "Original cleanup differs")
+    native = reconciliation.get("native_assessment", {})
+    require(native.get("independent_dns_assertions") == 24 and all(native.get(k) is True for k in (
+        "complete_root_agent_loss_observed", "primary_partial_failure_observed", "backup_completed_both_tables",
+        "witness_groups_empty", "witness_active_capabilities_empty")), "Native fault evidence incomplete")
+    projected = copy.deepcopy(loss)
+    projected.update(status="success", errors=[], preflight_verified=True)
+    projected["cleanup"].update(payload_markers=True, known_processes_ended=True, owned_stage_removed=True)
+    result = assess(projected, after, launcher_log, agent_status, owned_host=True)
+    result.update(original_session_status="stopped", parser_rejection_reconciled=True,
+                  original_receipt_rewritten=False, native_test_repeated=False)
+    return result
 
 
 def main():
@@ -185,10 +248,19 @@ def main():
     parser.add_argument("--after", required=True)
     parser.add_argument("--launcher-log", required=True)
     parser.add_argument("--agent-status", required=True)
-    parser.add_argument("--owned-clients", action="store_true", help="Require the isolated client-cgroup routing variant")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--owned-clients", action="store_true", help="Require the isolated client-cgroup routing variant")
+    scope.add_argument("--owned-host", action="store_true", help="Require the live-network owned-test-client variant")
+    parser.add_argument("--reconciliation", help="Separate cleanup proof for the exact supported host parser rejection")
     args = parser.parse_args()
-    print(json.dumps(assess(load(args.loss), load(args.after), Path(args.launcher_log).read_text(encoding="utf-8"),
-                           Path(args.agent_status).read_text(encoding="utf-8"), owned_clients=args.owned_clients), indent=2))
+    logs = (Path(args.launcher_log).read_text(encoding="utf-8"), Path(args.agent_status).read_text(encoding="utf-8"))
+    if args.reconciliation:
+        require(args.owned_host, "Reconciliation requires explicit owned-host scope")
+        result = assess_reconciled_host(load(args.loss), load(args.after), load(args.reconciliation), *logs,
+                                       hashlib.sha256(Path(args.loss).read_bytes()).hexdigest())
+    else:
+        result = assess(load(args.loss), load(args.after), *logs, owned_clients=args.owned_clients, owned_host=args.owned_host)
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":
