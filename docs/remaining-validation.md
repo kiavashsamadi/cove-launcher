@@ -33,6 +33,10 @@ deployment passed full global, owner, web-app and picture-table comparisons,
 with launcher routing, update controls, networking and diagnostic cleanup
 preserved. This additional flag still needs its own restart and physical
 functionality check; the earlier nine-app restart result does not cover it.
+The native application-information API independently reports the web player as
+disabled and the launcher carrier as enabled for the same owner context. This
+checks the metadata view, not every possible activation path; neither app was
+launched or reloaded for the query.
 
 ## Limits
 

@@ -39,6 +39,9 @@ Deployment received the matching successful native completion callback and a
 disabled readback. Fresh full-database comparisons found exactly that one
 global flag change: all other registry rows, all six picture tables and the
 launcher, update, network and identity checks were preserved.
+An independent owner-specific native metadata query reports the web player as
+disabled and the Cove carrier as enabled. No app launch or shared-cache refresh
+was used, and both metadata handles were released.
 The package and its data remain installed, with a scoped
 native enable inverse retained. Restart persistence, all possible activation
 paths and a reduction in transmitted data are not established for this new
