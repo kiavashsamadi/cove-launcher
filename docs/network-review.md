@@ -83,11 +83,13 @@ A byte-identical temporary copy without capability attributes was also refused
 by the TV's executable-signature enforcement. The original binary, its attributes
 and security policies were preserved; the copy and other trial files were removed.
 
-This qualifies isolated DNS responses, **not an unattended on-TV resolver**.
-Keep a reliable external LAN resolver as an alternative. An on-TV design needs
-independent cleanup that survives supervisor loss without weakening security,
-followed by separate routing, compatibility and startup qualification. No trial
-resolver or filtering policy remains installed.
+A separate [manager-owned recovery design](dns-recovery.md) passed ten isolated
+lifecycle cases, including frozen-worker and launch-client loss, plus 239 DNS
+response assertions. It avoids reliance on the earlier parent-death signal.
+Supplementary-group minimization remains unresolved, and restoration of real
+DNS routing is modeled rather than qualified on the TV. This qualifies isolated
+containment, **not an unattended on-TV resolver**. Keep a reliable external LAN
+resolver as an alternative. No trial resolver or filtering policy remains installed.
 
 Private receipts can be assessed offline:
 

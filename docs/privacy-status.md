@@ -75,10 +75,13 @@ Further read-only checks found IPv6 DNS activity as well as IPv4 connections, so
 an IPv4-only policy would leave an observed path uncovered. An isolated
 ACR/advertising trial passed 233 synthetic DNS response checks across IPv4/IPv6
 loopback and UDP/TCP, plus supervised outage/restart/deadline checks. Automatic
-supervisor-loss cleanup failed and required the diagnostic guard; a temporary
-copy alternative was refused by signature enforcement. All trial processes and
-files were removed, with native DNS and firewall rules preserved. No real client
-traffic was redirected, and an unattended on-TV resolver remains unqualified.
+supervisor-loss cleanup failed in the parent-death-signal design; a temporary
+copy alternative was refused by signature enforcement. A separate manager-owned
+design passed ten isolated lifecycle cases and 239 response assertions. Its
+supplementary-group minimization and recovery of real routing remain unqualified.
+All trial processes and files were removed, with native DNS and firewall rules
+preserved. No real client traffic was redirected, and an unattended on-TV
+resolver remains unqualified.
 See the [network review workflow and recovery limits](network-review.md).
 
 App synchronization is another candidate because it participates in app
