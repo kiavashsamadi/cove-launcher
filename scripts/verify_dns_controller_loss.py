@@ -37,10 +37,12 @@ def ownership(r, suffixes):
     return token, units, pids
 
 
-def assess_controller(receipt, *, flow=False, partial_primary=False):
-    require(type(flow) is bool and type(partial_primary) is bool and not (flow and partial_primary),
+def assess_controller(receipt, *, flow=False, partial_primary=False, native_retry=False):
+    require(type(flow) is bool and type(partial_primary) is bool and type(native_retry) is bool
+            and not (flow and partial_primary) and (not native_retry or flow),
             "Fixed test selector required")
-    suffix = "flow-v2" if flow else "controllerloss-v3" if partial_primary else "controllerloss-v2"
+    suffix = ("libc-retry-v1" if native_retry else "flow-v2" if flow
+              else "controllerloss-v3" if partial_primary else "controllerloss-v2")
     r = envelope(receipt, "isolated-dns-" + suffix, runtime=True)
     require(all(r.get(k) is True for k in ROUTE_FLAGS + AUTO_FLAGS), "Recovery proof missing")
     require(all(r.get(k) is False for k in ("host_firewall_changed", "ipv6_redirection_supported",

@@ -77,13 +77,17 @@ detailed DNS assertions plus readiness checks. A separate private-network trial 
 rollback assertions, including partial activation, interruptions and conflicts.
 Independent deadline recovery then passed resolver-crash and frozen-worker/client-loss
 cases, with 28 DNS assertions each and no controller-issued inverse.
-A rule-controller crash also passed automatic native cleanup and a backup inverse.
-Real native lookup/replay checks passed with existing upstreams; the bounded
-samples observed no background-app queries. A retained TCP DNS connection reset
-after recovery, so native client retry and live interception remain unqualified.
+Complete diagnostic-agent loss and an interrupted primary inverse also passed
+independent backup recovery and automatic native cleanup. Native libc TCP retry
+and 12 NSS IPv4/IPv6 fallback cases passed. Real native lookup/replay checks used
+existing upstreams; the bounded samples observed no background-app queries. A
+raw retained TCP connection still reset, and ordinary-client interception remains
+unqualified.
 Worker supplementary groups and active capabilities are empty after startup.
-Live TV DNS/firewall settings remain unchanged; no real client traffic was
-redirected. An unattended on-TV resolver remains unqualified. See the
+Eight real-upstream lookup cases also passed using restricted test clients with
+private resolver views and empty supplementary groups. Live TV DNS/firewall
+settings remain unchanged; ordinary applications were not redirected.
+An unattended on-TV resolver remains unqualified. See the
 [recovery evidence and deployment gates](dns-recovery.md).
 
 App synchronization is another candidate because it participates in app

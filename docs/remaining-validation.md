@@ -38,11 +38,11 @@ confirmed separately after that restart.
 - Shared profile persistence across a full restart, accessibility speech,
   full AC removal, future firmware and long-run memory need separate coverage.
 - Complete telemetry prevention and numerical speed improvements are not claimed.
-- DNS filtering remains a lab candidate. Rule-controller loss and an interrupted
-  primary inverse recovered with automatic native cleanup. Limited native DNS
-  replay passed, but neither sample contained background-app queries, and a held
-  TCP connection reset after rollback. Complete diagnostic-session loss, native
-  client reconnect/IPv6 fallback, application compatibility and persistent
+- DNS filtering remains a lab candidate. Complete diagnostic-agent loss and an
+  interrupted primary inverse recovered with independent backup and automatic
+  native cleanup. Native libc TCP reconnect and NSS IPv4/IPv6 fallback passed.
+  A raw retained TCP connection still reset; limited replay observed no
+  background-app queries. Ordinary-app/live-network compatibility and persistent
   startup remain unqualified. See [DNS recovery](dns-recovery.md).
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher
