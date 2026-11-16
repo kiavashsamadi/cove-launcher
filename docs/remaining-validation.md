@@ -41,6 +41,8 @@ confirmed separately after that restart.
 - DNS filtering remains a lab candidate. Complete diagnostic-agent loss and an
   interrupted primary inverse recovered with independent backup and automatic
   native cleanup. Native libc TCP reconnect and NSS IPv4/IPv6 fallback passed.
+  An isolated client-cgroup variant also passed complete-controller-loss recovery
+  while nonmember DNS remained unaffected.
   A raw retained TCP connection still reset; limited replay observed no
   background-app queries. Ordinary-app/live-network compatibility and persistent
   startup remain unqualified. See [DNS recovery](dns-recovery.md).

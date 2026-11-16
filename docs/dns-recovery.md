@@ -90,6 +90,25 @@ This proves agent/callback loss and backup completion in an isolated network.
 It does not establish recovery from PID 1, kernel, physical network or power
 failure, or qualify interception of ordinary TV applications.
 
+## Client-scoped recovery
+
+A further isolated trial matches only a newly created client cgroup at the
+OUTPUT hook. The resolver and nonmember clients remain outside that match.
+Sixteen baseline/nonmember DNS assertions pass. After complete diagnostic-agent
+loss, a restricted witness passes 24 assertions covering active filtering,
+partial primary recovery and full backup recovery. Both helpers hold the client
+group through their inverse; temporary groups, services and files are removed
+automatically. A separate readback confirms host DNS/firewall preservation.
+
+The exact generated scripts also pass 48 synthetic activation/inverse cases,
+including every mutation interruption, duplicate/foreign rules, unrelated
+concurrent rules, quoted paths and wrong-namespace refusal. The
+[kernel cgroup matcher](https://github.com/torvalds/linux/blob/v5.4/net/netfilter/xt_cgroup.c)
+matches descendant socket groups, so no ordinary application is moved into the
+test group. These results qualify scoped recovery only in the isolated network;
+live-host interception, ordinary-app compatibility and persistent deployment
+remain unqualified.
+
 ## Existing connections and real DNS compatibility
 
 Restoring rules is not enough to claim seamless connection recovery. Two successive queries on the same TCP connection succeeded before the inverse, both against the original resolver and the active candidate. After recovery, an existing UDP socket reached the original resolver, but the held TCP connection was reset. New UDP/TCP queries succeeded. These results do not prove that every native DNS client retries correctly, or that connection tracking on the live network behaves identically.
@@ -143,6 +162,7 @@ python scripts/verify_dns_native_retry.py /absolute/private/native-retry-result.
 python scripts/verify_dns_nss.py /absolute/private/native-nss-result.json
 python scripts/verify_dns_native_live.py /absolute/private/native-live-result.json
 python scripts/verify_dns_session_loss.py --loss /absolute/private/loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
+python scripts/verify_dns_session_loss.py --owned-clients --loss /absolute/private/scoped-loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
 python scripts/simulate_dns_recovery.py
 ```
 

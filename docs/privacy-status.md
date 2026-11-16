@@ -87,6 +87,10 @@ Worker supplementary groups and active capabilities are empty after startup.
 Eight real-upstream lookup cases also passed using restricted test clients with
 private resolver views and empty supplementary groups. Live TV DNS/firewall
 settings remain unchanged; ordinary applications were not redirected.
+Client-scoped routing also passed isolated complete-controller-loss and
+interrupted-primary recovery, with an independent restricted witness and
+separate host-network readback. Nonmember DNS remained unaffected. This is a
+prerequisite for a future narrow live-network trial, not deployed protection.
 An unattended on-TV resolver remains unqualified. See the
 [recovery evidence and deployment gates](dns-recovery.md).
 

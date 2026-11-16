@@ -70,9 +70,10 @@ def witness_rows(text):
     return rows, len(gc) // 2
 
 
-def assess(loss, after, launcher_log, agent_status):
+def assess(loss, after, launcher_log, agent_status, *, owned_clients=False):
     r, a = outer(loss), outer(after)
-    require(r.get("scope") == "isolated-dns-sessionloss-v2" and r.get("completed") is False
+    scope = "isolated-dns-owned-loss-v1" if owned_clients else "isolated-dns-sessionloss-v2"
+    require(r.get("scope") == scope and r.get("completed") is False
             and r.get("known_children_ended") is False and loss.get("loss_armed") is True,
             "Expected pending loss receipt")
     for k in ("loss_armed", "namespace_isolated", "worker_groups_empty", "worker_active_capabilities_empty",
@@ -81,6 +82,17 @@ def assess(loss, after, launcher_log, agent_status):
         require(r.get(k) is True, "Loss preparation incomplete")
     require(r.get("rules_discarded_with_namespace_after_failure") is False, "Namespace discard is not recovery")
     token, units, pids = ownership(r, ("candidate", "original", "rescue", "backup", "control", "witness"))
+    if owned_clients:
+        child = "covedns" + token + "-client.slice"
+        path = "covedns" + token + ".slice/" + child
+        require(r.get("client_slice") == child and r.get("client_cgroup_path") == path
+                and r.get("nonmember_unaffected") is True, "Owned client scope differs")
+        checks = r.get("checks", [])
+        require(isinstance(checks, list) and len(checks) == 2
+                and [x.get("phase") for x in checks] == ["baseline", "nonmember-active"]
+                and all(x.get("passed") is True and type(x.get("assertions")) is int
+                        and x["assertions"] == 8 and x.get("host_namespace_restored") is True for x in checks),
+                "Nonmember preservation incomplete")
     root = loss.get("root_pid")
     require(integer(root, 2, 2**31 - 1) and r.get("controller_pid") == root and root not in pids,
             "Root identity differs")
@@ -113,6 +125,9 @@ def assess(loss, after, launcher_log, agent_status):
                         ProtectKernelTunables="yes", ProtectKernelModules="yes", ProtectControlGroups="yes",
                         NetworkNamespacePath="/proc/" + str(pids[1]) + "/ns/net")
         expected["CapabilityBoundingSet"] = "cap_setgid cap_setuid" if index == 5 else "cap_net_admin cap_net_raw"
+        if owned_clients:
+            group = path if index in (2, 3, 5) else "covedns" + token + ".slice"
+            expected["ControlGroup"] = "/" + group + "/" + units[index]
         require(isinstance(props, dict) and all(props.get(k) == v for k, v in expected.items()),
                 "Independent helper restrictions differ")
     logs = loss.get("independent_receipts", {})
@@ -120,6 +135,13 @@ def assess(loss, after, launcher_log, agent_status):
     for k in ("private_baseline4", "private_baseline6", "private_active4"):
         require(isinstance(r.get(k), str) and 1 <= len(r[k]) <= 32768, "Table receipt missing")
     require(r["private_active4"] != r["private_baseline4"], "Primary partial state not established")
+    if owned_clients:
+        chain = "CVD" + token
+        additions = ["-N " + chain, "-A OUTPUT -m cgroup --path " + path + " -j " + chain]
+        additions += ["-A " + chain + " -p " + p + " -m " + p + " --dport 53 -j REDIRECT --to-ports 1053"
+                      for p in ("udp", "tcp")]
+        require(Counter(r["private_active4"].splitlines()) == Counter(r["private_baseline4"].splitlines() + additions),
+                "Unexpected scoped routing rules")
     primary = "partial_table6_begin\n" + r["private_baseline6"] + "\npartial_table4_begin\n" + r["private_active4"] + "\nprimary_interrupted=75\ninverse_exit=75"
     backup = "table4_begin\n" + r["private_baseline4"] + "\ntable6_begin\n" + r["private_baseline6"] + "\ninverse_finished=0\ninverse_exit=0"
     actual = logs.get("rescue", "")
@@ -152,6 +174,7 @@ def assess(loss, after, launcher_log, agent_status):
                 backup_completed_recovery=True, independent_witness_dns_assertions=24,
                 witness_active_capabilities_empty=True, automatic_native_cleanup_passed=True,
                 host_network_preserved_across_loss=True, bounded_runtime_gc_pairs=gc_pairs,
+                owned_client_scope_verified=owned_clients,
                 physical_pc_disconnect_tested=False, live_network_recovery_qualified=False,
                 production_dns_qualified=False)
 
@@ -162,9 +185,10 @@ def main():
     parser.add_argument("--after", required=True)
     parser.add_argument("--launcher-log", required=True)
     parser.add_argument("--agent-status", required=True)
+    parser.add_argument("--owned-clients", action="store_true", help="Require the isolated client-cgroup routing variant")
     args = parser.parse_args()
     print(json.dumps(assess(load(args.loss), load(args.after), Path(args.launcher_log).read_text(encoding="utf-8"),
-                           Path(args.agent_status).read_text(encoding="utf-8")), indent=2))
+                           Path(args.agent_status).read_text(encoding="utf-8"), owned_clients=args.owned_clients), indent=2))
 
 
 if __name__ == "__main__":
