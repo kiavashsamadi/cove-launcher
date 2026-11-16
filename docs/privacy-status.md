@@ -71,6 +71,21 @@ A wireless MAC filter usually controls association and can remove local access;
 it is not equivalent to a TV-only Internet block. A DNS list alone cannot cover
 hard-coded addresses or alternate resolvers.
 
+Further read-only checks found IPv6 DNS activity as well as IPv4 connections, so
+an IPv4-only policy would leave an observed path uncovered. A proposed isolated
+ACR/advertising configuration passed the installed resolver's syntax check;
+no resolver was started and no filtering was installed. Runtime behavior,
+compatibility and recovery remain separate tests. The
+[network review workflow](network-review.md) prepares those trials offline.
+
+App synchronization is another candidate because it participates in app
+restoration. Its native metadata and registry baseline were read successfully,
+but its system package advertises no disable support. Native disable acceptance,
+re-enablement and restoration behavior remain unproven. Empty dependency rows
+and process absence in a short sample are insufficient to qualify removal. Do
+not replace this uncertainty with direct registry edits or package-manager
+restarts. Dormant app removal likewise has no demonstrated speed benefit here.
+
 No network policy is installed by Cove. Separately connected HDMI players and
 consoles have their own network behavior. See [recovery](recovery.md),
 [offline review tools](privacy-preparation.md) and [external references](resource-review.md).

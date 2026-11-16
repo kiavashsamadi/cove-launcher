@@ -61,6 +61,10 @@ and [Linux socket inode mapping](https://www.man7.org/linux/man-pages/man5/proc_
 
 ## Before a permanent change
 
+For DNS candidates, use the [network review workflow](network-review.md). It
+creates an isolated lab configuration and an explicit qualification checklist;
+it does not configure the TV, router, firewall or a DNS service.
+
 Identify the exact firmware, app/service, callers and activation paths. Preserve
 the current state and specify a narrow inverse before changing it. Prefer native
 app-management operations over raw registry edits. Compare unrelated registries,

@@ -40,6 +40,7 @@ separate private deployment tooling and an exact firmware match.
 | Exact-build startup and bounded control protocol | Bootstrap and control-envelope tests | Another firmware requires independent qualification |
 | Privacy app flags, scoped inverse and PISA/adagent receipts | Python policy, registry-diff and receipt-verifier tests | Read flags/process/unit state on TV; these do not prove all telemetry is absent |
 | Automatic-update policy receipts | `test_update_policy.py`: exact keys/types, enabled or pending values, incomplete reads and cleanup | Fresh native readback passed after a confirmed new boot; future firmware needs requalification |
+| Offline DNS review preparation | `test_network_policy.py`: explicit scope, input bounds/injection, shared-parent rejection, private paths and preserving previous reviews | Syntax-only resolver acceptance does not prove DNS response behavior, enforcement, compatibility or recovery |
 | Saved tuning, Home/startup and recovery preservation | Transaction-policy/registry tests and private before/after comparisons | Exact current backups and scoped recovery must accompany an installation |
 | Public export, UTF-8 and offline renderer/preview | Export scan, browser external-request assertions and repository review | Inspect screenshots and Git history before publishing; pattern scans alone are insufficient |
 
