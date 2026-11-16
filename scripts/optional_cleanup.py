@@ -2,7 +2,12 @@
 
 The private adapter must provide verified one-app native transactions and a
 durable event sink. A transport exception is an UNKNOWN outcome and includes the
-current app in recovery. Restore failure never authorizes a broader operation.
+current app in recovery. apply_is_terminal(stage) must establish that the exact
+request can no longer commit a late disable; a stopped CLI or an unchanged flag
+alone is insufficient. It must return False when evidence is missing. Restore
+must verify its own completion and exact inverse. This policy supplies neither
+native evidence nor an activation fence. Native disable may terminate an app;
+restoring a registration flag cannot undo an interrupted application operation.
 """
 from dataclasses import dataclass
 
@@ -42,7 +47,9 @@ def restore_prefix(stages, adapter, event):
   try:event('before_restore', stage)
   except Exception:pass
   try:
-   ok=adapter.restore(stage) is True
+   # Do not race an inverse against a request that can still commit afterward.
+   # Earlier terminal stages can still recover if the newest one is unresolved.
+   ok=adapter.apply_is_terminal(stage) is True and adapter.restore(stage) is True
   except Exception:
    ok=False
   try:event('restored' if ok else 'restore_unverified', stage)
@@ -52,6 +59,8 @@ def restore_prefix(stages, adapter, event):
 
 def apply(stages, adapter, event):
  validate(stages)
+ if any(not callable(getattr(adapter,name,None)) for name in ('apply','apply_is_terminal','restore')):
+  raise TypeError('A native completion-aware adapter is required before any request')
  attempted=[]
  for stage in stages:
   try:
@@ -60,6 +69,8 @@ def apply(stages, adapter, event):
    attempted.append(stage)
    if adapter.apply(stage) is not True:
     raise RuntimeError('Native apply/readback unverified')
+   if adapter.apply_is_terminal(stage) is not True:
+    raise RuntimeError('Native apply may still commit; do not advance the batch')
    event('applied',stage)
   except Exception:
    recovery=restore_prefix(attempted,adapter,event)

@@ -121,6 +121,13 @@ and process absence in a short sample are insufficient to qualify removal. Do
 not replace this uncertainty with direct registry edits or package-manager
 restarts. Dormant app removal likewise has no demonstrated speed benefit here.
 
+Native server inspection also found that deactivation can terminate its target
+before changing the registration flag. App-sync can perform installation and
+restoration work, so its disable needs more than a prior idle-process sample and
+a reversible flag. No app-sync mutation was performed during this review. The
+[native operation boundaries](privacy-preparation.md#native-operation-boundaries)
+describe the completion and recovery requirements.
+
 No network policy is installed by Cove. Separately connected HDMI players and
 consoles have their own network behavior. See [recovery](recovery.md),
 [offline review tools](privacy-preparation.md) and [external references](resource-review.md).

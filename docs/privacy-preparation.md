@@ -32,6 +32,23 @@ disposable copies. Passing these tests proves neither native service behavior no
 network privacy. `verify_review_packet.py` checks private archive paths, sizes and
 hashes without extracting or executing their contents.
 
+## Native operation boundaries
+
+Native app deactivation can terminate the target process before updating its
+registration. Re-enabling a flag does not restore interrupted work. A process
+snapshot is not an atomic guarantee that the app cannot launch immediately after
+the check. Account for this side effect when qualifying each target, particularly
+app synchronization and other components that can start installation work.
+
+The offline batch policy requires `apply_is_terminal(stage)` before advancing or
+issuing an inverse. Its private adapter must correlate completion with the exact
+native request and establish that no late write can follow. CLI timeout, client
+termination, request acceptance and a single unchanged registry read do not
+establish this. If completion is unknown, the policy reports recovery required;
+it can still restore earlier stages with proven completion. This contract and
+its delayed-request tests do not implement native request cancellation or make
+an unqualified TV operation safe.
+
 ## Verify operational receipts offline
 
 ```text

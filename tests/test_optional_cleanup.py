@@ -11,6 +11,9 @@ class Adapter:
   app=stage.app_id;self.calls.append(('apply',app));self.disabled.add(app)
   if app==self.unknown:raise TimeoutError('Request outcome unknown')
   return app!=self.fail
+ def apply_is_terminal(self,stage):
+  # In this fixture the mutation commits before any simulated transport error.
+  return True
  def restore(self,stage):
   app=stage.app_id;self.calls.append(('restore',app))
   if app==self.restore_fail:return False
@@ -65,5 +68,48 @@ class BatchPolicy(unittest.TestCase):
   a=Adapter()
   for bad in (tuple(reversed(stages())),(p.Stage('org.tizen.menu','a'*64,'b'*64),)):
    with self.assertRaises(ValueError):p.restore_prefix(bad,a,lambda *_:None)
+  self.assertFalse(a.calls)
+ def test_late_apply_is_not_raced_by_an_early_inverse(self):
+  class Delayed(Adapter):
+   pending=None
+   def apply(self,stage):
+    if stage.app_id==p.APPS[2]:
+     self.calls.append(('apply',stage.app_id));self.pending=stage
+     raise TimeoutError('Server request remains live after the client timed out')
+    return super().apply(stage)
+   def apply_is_terminal(self,stage):return self.pending!=stage
+   def complete_pending(self):
+    self.disabled.add(self.pending.app_id);self.pending=None
+  a=Delayed();r=p.apply(stages(),a,lambda *_:None)
+  self.assertEqual(r['status'],'recovery_required')
+  self.assertNotIn(('restore',p.APPS[2]),a.calls)
+  self.assertEqual([app for role,app in a.calls if role=='restore'],[p.APPS[1],p.APPS[0]])
+  self.assertFalse(a.disabled)
+  a.complete_pending()
+  self.assertEqual(a.disabled,{p.APPS[2]})
+  recovered=p.restore_prefix(stages()[:3],a,lambda *_:None)
+  self.assertTrue(all(ok for _,ok in recovered));self.assertFalse(a.disabled)
+ def test_acknowledged_but_nonterminal_request_stops_next_stage(self):
+  class Pending(Adapter):
+   def apply_is_terminal(self,stage):return stage.app_id!=p.APPS[0]
+  a=Pending();r=p.apply(stages(),a,lambda *_:None)
+  self.assertEqual(r['status'],'recovery_required')
+  self.assertEqual(a.calls,[('apply',p.APPS[0])])
+ def test_unknown_terminal_evidence_never_authorizes_restore(self):
+  for value in (False,None,0,1,'true'):
+   a=Adapter(fail=p.APPS[0]);a.apply_is_terminal=lambda stage:value
+   r=p.apply(stages(),a,lambda *_:None)
+   self.assertEqual(r['status'],'recovery_required')
+   self.assertNotIn(('restore',p.APPS[0]),a.calls)
+ def test_terminal_evidence_exception_preserves_unknown_outcome(self):
+  a=Adapter(fail=p.APPS[0])
+  def unavailable(stage):raise OSError('Native completion evidence unavailable')
+  a.apply_is_terminal=unavailable
+  r=p.apply(stages(),a,lambda *_:None)
+  self.assertEqual(r['status'],'recovery_required')
+  self.assertEqual(a.calls,[('apply',p.APPS[0])])
+ def test_old_adapter_is_rejected_before_any_apply(self):
+  a=Adapter();a.apply_is_terminal=None
+  with self.assertRaises(TypeError):p.apply(stages(),a,lambda *_:None)
   self.assertFalse(a.calls)
 if __name__=='__main__':unittest.main()
