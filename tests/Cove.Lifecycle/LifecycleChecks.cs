@@ -10,6 +10,9 @@ internal sealed partial class NeutralWindow {
  internal void ProbeCreate()=>OnCreate();internal void ProbePause()=>OnPause();internal void ProbeResume()=>OnResume();
  internal void ProbeLaunch(string? entry=null,string? operation=null){var c=new ReceivedAppControl{Operation=operation};if(entry!=null)c.ExtraData.Add("entry_point",entry);OnAppControlReceived(new(){ReceivedAppControl=c});}
  internal bool ProbeReady=>state.Picture!=null&&!state.PicturePending&&updates.IsEmpty&&Volatile.Read(ref workerBusy)==0;
+ // Picture and inventory workers finish independently. Navigation fixtures
+ // must also wait for the first input-focus assignment, not only data reads.
+ internal bool ProbeInitialReady=>ProbeReady&&ProbeInventoryIdle&&hasState&&inputFocusRequested;
  internal bool ProbeIdle=>Volatile.Read(ref workerBusy)==0;
  internal bool ProbeFollowIdle=>!inputHandoff.Active;
  internal bool ProbeReturning=>returningToViewer;internal bool ProbeActive=>foreground.Active;
@@ -50,7 +53,7 @@ internal static partial class LifecycleChecks {
  static int checks;
  static void Check(bool ok,string why){checks++;if(!ok)throw new Exception(why);}
  static void Until(Func<bool> predicate,int timeout=3000){var time=Stopwatch.StartNew();while(!predicate()){Tizen.NUI.Timer.Pump();Thread.Sleep(1);if(time.ElapsedMilliseconds>timeout)throw new TimeoutException("UI condition did not settle");}}
- static NeutralWindow Create(FakeDevice device){Window.Reset();var app=new NeutralWindow(device,new BrightnessProfiles());app.ProbeCreate();Until(()=>app.ProbeReady&&app.ProbeInventoryIdle);app.ProbeTick();return app;}
+ static NeutralWindow Create(FakeDevice device){Window.Reset();var app=new NeutralWindow(device,new BrightnessProfiles());app.ProbeCreate();Until(()=>app.ProbeInitialReady);app.ProbeTick();return app;}
  static void Main(){
   RunHotplugChecks();
   RunLifetimeChecks();
