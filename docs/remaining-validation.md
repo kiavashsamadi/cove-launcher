@@ -31,10 +31,13 @@ The separate web advertising player's native disable/enable round trip and
 controlled validation-failure recovery passed. Its subsequent single-flag
 deployment passed full global, owner, web-app and picture-table comparisons,
 with launcher routing, update controls, networking and diagnostic cleanup
-preserved. This additional flag still needs its own restart and physical
-functionality check; the earlier nine-app restart result does not cover it.
+preserved. A subsequent confirmed cold boot preserved the new flag, the existing
+controls and all six picture tables, compared with a fresh baseline that includes
+intentional picture changes. Navigation, picture and sound were confirmed
+separately after startup.
 The native application-information API independently reports the web player as
-disabled and the launcher carrier as enabled for the same owner context. This
+disabled and the launcher carrier as enabled for the same owner context, both
+before and after that reboot. This
 checks the metadata view, not every possible activation path; neither app was
 launched or reloaded for the query.
 

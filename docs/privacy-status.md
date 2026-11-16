@@ -6,7 +6,7 @@ Cove alone does not disable them or prove that telemetry is absent.
 
 ## Qualified component controls
 
-A tested configuration uses these nine cold-boot-verified global
+A tested configuration uses these ten cold-boot-verified global
 app-registration disables:
 
 | Component group | Count |
@@ -14,6 +14,7 @@ app-registration disables:
 | Dedicated ACR service | 1 |
 | Samsung Analytics | 1 |
 | Targeted-ad service and native ad player | 2 |
+| Separate web advertising player | 1 |
 | Samsung Health components | 3 |
 | SmartThings Find components | 2 |
 
@@ -30,7 +31,7 @@ Bluetooth, accessibility and security components.
 
 The native ad player (`com.samsung.tv.adplayer`) is separate from the web
 application `adplatform.ADPlayer` in package `adplatform`. The web player's
-global registration flag is now disabled as a separate tenth control. Its
+global registration flag is disabled independently. Its
 native disable/enable round trip and recovery after a controlled post-disable
 validation failure passed before deployment. Both tests restored the original
 flag and preserved the full global, owner, web-app and picture tables.
@@ -43,9 +44,11 @@ An independent owner-specific native metadata query reports the web player as
 disabled and the Cove carrier as enabled. No app launch or shared-cache refresh
 was used, and both metadata handles were released.
 The package and its data remain installed, with a scoped
-native enable inverse retained. Restart persistence, all possible activation
-paths and a reduction in transmitted data are not established for this new
-control. It does not disable the shared advertising framework.
+native enable inverse retained. The flag and native disabled metadata survived
+a confirmed cold boot; all six picture tables and the existing protections
+remained intact. Navigation, picture and sound were confirmed separately.
+This does not establish that every activation path is blocked or measure a
+reduction in transmitted data. The shared advertising framework remains enabled.
 
 The offline [package inventory comparison](../scripts/compare_package_inventory.py)
 keeps package IDs, application IDs and sibling flags separate; recorded flags
