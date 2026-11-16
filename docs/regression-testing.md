@@ -56,6 +56,7 @@ separate private deployment tooling and an exact firmware match.
 | Boot-peer recovery model | `test_dns_boot_recovery.py`: every modeled operation interrupted, repeated boots, fresh acknowledgment, stale/reused tokens, owner changes and untrusted journals | Assumes atomic durable authenticated preparation and conditional writes. These primitives and startup recovery are not qualified on the TV; model never executes TV operations |
 | Saved tuning, Home/startup and recovery preservation | Transaction-policy/registry tests and private before/after comparisons | Exact current backups and scoped recovery must accompany an installation |
 | Public export, UTF-8 and offline renderer/preview | Export scan, browser external-request assertions and repository review | Inspect screenshots and Git history before publishing; pattern scans alone are insufficient |
+| Resident resource accounting | `test_resident_sample.py`: native clock/page units, process reuse, counter reset, bounded snapshots, group changes and cleanup | One native interval sampled very low CPU use and stable RSS. It does not establish continuous hidden state, absence of leaks or a speed improvement |
 
 Regression coverage is organized by behavior, not a claim of 100% code or
 hardware coverage. Adding a feature requires extending the relevant test suite

@@ -31,3 +31,30 @@ reentrant native resume, stale replies, Settings, caption continuity and hidden
 work. These do not establish physical key-to-frame latency or long-run memory.
 No percentage speed improvement or universal instant-open guarantee is claimed.
 See [validation](remaining-validation.md).
+
+## Resident resource sample
+
+A bounded read-only native sample recorded one CPU-accounting tick (4 ms) over
+60.89 seconds, approximately 0.0066% of one CPU core. Resident memory was 93,960
+KiB (about 91.8 MiB) at all three snapshots, with 32 threads. The process was in
+the background CPU group at each snapshot; its identity, start time and boot
+identity stayed stable. Launcher routing and the installed renderer matched
+before and after, and the temporary diagnostic helpers were removed.
+
+This is one interval on the tested build, not a speed comparison, continuous
+visibility trace or long-run leak test. RSS is an approximate resident-memory
+counter and includes shared pages; it is not private memory. CPU tick and page
+sizes were read from the native system rather than assumed. See the kernel's
+[process accounting documentation](https://docs.kernel.org/filesystems/proc.html).
+
+The offline [resource checker](../scripts/verify_resident_sample.py) validates
+the private receipt and prints aggregates without process, boot or device
+identifiers:
+
+```sh
+python scripts/verify_resident_sample.py /absolute/private/resource-result.json
+```
+
+Its regressions cover process reuse, counter resets, accounting units, malformed
+reads, visibility-group changes, preservation and cleanup. It never contacts a
+TV and does not qualify an optimization or a background-service disable.
