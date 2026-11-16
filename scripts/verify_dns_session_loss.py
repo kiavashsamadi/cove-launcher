@@ -16,7 +16,8 @@ from verify_dns_manager import integer, load, NETWORK
 from verify_dns_trial import CLEANUP, require
 
 
-def outer(receipt, *, owned_host=False):
+def outer(receipt, *, owned_host=False, upstream_replay=False):
+    require(not (owned_host and upstream_replay), "Choose one explicit network scope")
     require(isinstance(receipt, dict) and receipt.get("status") == "success" and receipt.get("errors") == []
             and receipt.get("root_proven") is True and receipt.get("preflight_verified") is True,
             "Incomplete session")
@@ -37,8 +38,12 @@ def outer(receipt, *, owned_host=False):
     for k in ("settings_written", "installed",
               "startup_changed", "existing_services_changed", "production_dns_qualified"):
         require(r.get(k) is False, "Trial scope differs")
-    for k in ("host_firewall_changed", "external_dns_sent"):
-        require(r.get(k) is owned_host, "Host routing scope differs")
+    require(r.get("host_firewall_changed") is owned_host, "Host routing scope differs")
+    if upstream_replay:
+        require("external_dns_sent" not in r and r.get("upstream_replay_permitted") is True,
+                "Replay permission is not a claim that queries were sent")
+    else:
+        require(r.get("external_dns_sent") is owned_host, "External DNS scope differs")
     before = r.get("network_fingerprints_before")
     require(isinstance(before, dict) and set(before) == NETWORK
             and all(isinstance(v, str) and re.fullmatch("[0-9a-f]{64}", v) for v in before.values()),

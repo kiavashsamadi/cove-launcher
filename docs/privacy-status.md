@@ -97,6 +97,14 @@ confirmed. Ordinary apps were not redirected; no filtering remains installed.
 An unattended on-TV resolver remains unqualified. See the
 [recovery evidence and deployment gates](dns-recovery.md).
 
+A longer receive-only sample observed two background DNS questions and their
+replies, neither matching the reviewed blocklist. A separate bounded replay
+sample observed no questions and therefore provides no background-replay
+coverage. Names and packet contents are not retained or published. These samples
+cannot establish absent telemetry or ordinary-app compatibility. An offline
+boot-recovery model now covers interrupted preparation/restoration and stale
+workers; native durable startup and power-loss recovery remain unqualified.
+
 App synchronization is another candidate because it participates in app
 restoration. Its native metadata and registry baseline were read successfully,
 but its system package advertises no disable support. Native disable acceptance,

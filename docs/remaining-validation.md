@@ -45,9 +45,13 @@ confirmed separately after that restart.
   while nonmember DNS remained unaffected.
   A separate live-network owned-client trial verified the same combined fault,
   with independent cleanup reconciliation and later host-state readback.
-  A raw retained TCP connection still reset; limited replay observed no
-  background-app queries. Ordinary-app compatibility and persistent
+  A raw retained TCP connection still reset. A longer passive sample observed
+  two background questions, but a separate replay sample observed none and
+  therefore adds no background-replay coverage. Ordinary-app compatibility and persistent
   startup remain unqualified. See [DNS recovery](dns-recovery.md).
+  An offline boot-recovery model tests interruptions and ownership conflicts;
+  its atomic durable journal and compare-and-set are assumptions, not native
+  persistence or power-loss qualification.
 
 A guard stop is treated as untested, not as a pass or evidence that the launcher
 failed. Physical picture, sound and perceived motion require a separate

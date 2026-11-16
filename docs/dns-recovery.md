@@ -187,6 +187,54 @@ ordinary Samsung apps or proving that the upstream leg used IPv6.
 
 Encrypted DNS, hard-coded addresses, alternate DNS ports and unknown telemetry endpoints remain outside this port-53 trial. A working DNS filter is not proof that every tracking path is blocked. A reliable external LAN resolver or suitable router remains an alternative.
 
+## Background observation and bounded replay
+
+A 60-second receive-only sample observed two background IPv4 DNS questions and
+two paired replies. Neither question matched the reviewed eight-domain list.
+No IPv6 questions occurred in that sample. The observer retained aggregate counts,
+not packet contents, names or addresses. This is evidence of limited background
+activity, not proof that the traffic was harmless or that telemetry was absent.
+
+The worker opened its receive socket before dropping its UID, supplementary
+groups and active capabilities. Its independent manager deadline was 75 seconds;
+the filesystem was read-only. The retained socket is still a privileged resource,
+so the fixed worker implementation and bounded lifetime matter. It neither sent
+queries nor changed routing. Cleanup and a separate network/renderer read passed.
+
+A successor can retain at most four paired questions in memory and replay them
+through a temporary loopback filter over IPv4/IPv6 and UDP/TCP. It only replays
+questions addressed to an already configured upstream, closes the packet socket
+first, and emits no names or addresses. Ordinary applications remain outside the
+filter. Its 60-second native sample observed no questions, so **no background
+replay compatibility was established**. Zero coverage must not be reported as a
+passing application-compatibility test. Native lookup coverage above remains a
+separate result.
+
+## Startup and power-loss boundary
+
+A runtime watchdog cannot by itself restore a persistent bootstrap setting after
+power loss: the setting can survive while the watchdog does not. Before using a
+temporary developer-peer change for startup, recovery must work on the next boot
+even if that setting already points to loopback. Refusing an existing loopback
+value without consulting a trusted preimage does not provide that recovery.
+
+The offline [boot recovery model](../scripts/model_dns_boot_recovery.py) tests
+interruption after each modeled operation, a fresh boot, interrupted restoration,
+stale workers, token reuse, missing/untrusted journals and independent owner
+changes. It requires durable preparation before changing the peer, a fresh
+watchdog acknowledgment, a unique transaction token, and conditional restoration
+of only the value it owns. Conflicting values preserve both the owner's choice
+and the recovery record.
+
+Atomic durable authenticated preparation, atomic compare-and-set and early-boot
+execution are **model assumptions**, not implemented or qualified native
+primitives. The model cannot prove filesystem durability, package admission,
+startup availability, physical power-loss recovery or a safe production install.
+No persistent boot hook, peer change or filtering policy is installed. An
+external always-on LAN resolver avoids this particular TV bootstrap dependency,
+but still needs explicit upstream policy, reliable availability and tested
+IPv4/IPv6 coverage. A TV-only WAN rule remains the stronger network boundary.
+
 ## Offline evidence checks
 
 ```text
@@ -199,6 +247,8 @@ python scripts/verify_dns_native_live.py /absolute/private/native-live-result.js
 python scripts/verify_dns_session_loss.py --loss /absolute/private/loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
 python scripts/verify_dns_session_loss.py --owned-clients --loss /absolute/private/scoped-loss-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
 python scripts/verify_dns_session_loss.py --owned-host --loss /absolute/private/host-loss-result.json --reconciliation /absolute/private/cleanup-result.json --after /absolute/private/later-network-read.json --launcher-log /absolute/private/launcher.log --agent-status /absolute/private/root-agent.status
+python scripts/verify_dns_passive.py --observation /absolute/private/passive-result.json --after /absolute/private/later-network-read.json
+python scripts/verify_dns_passive.py --replay --observation /absolute/private/replay-result.json --after /absolute/private/later-network-read.json
 python scripts/simulate_dns_recovery.py
 ```
 
